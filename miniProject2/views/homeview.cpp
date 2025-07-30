@@ -31,8 +31,6 @@ HomeView::HomeView(QWidget *parent)
     comboBox->addItem(QIcon(":/assets/assets/Dogecoin.svg"), "KRW-DOGE / 도지코인 / Dogecoin");
     comboBox->addItem(QIcon(":/assets/assets/PEPE.jpg"), "KRW-PEPE / 페페 / PEPE");
 
-
-
     // tab의 layout에 추가 - devwooms
     chartTab->addWidget(chartBox);
 
@@ -47,6 +45,10 @@ HomeView::HomeView(QWidget *parent)
     chattingListManager->settingConnectListWidget(connect_listWidget);
     chattingListManager->settingOneByOneListWidget(oneByone_listWidget);
     chattingListManager->settingOneByMoreListWidget(oneByMore_listWidget);
+
+    // geonwoo
+    update_price = chartBox->getLineChart()->getLatestPrice();
+    set_update_price(update_price);
 }
 
 // 특정 이벤트 필터 ( 전체적인 widget의 override임
@@ -168,6 +170,101 @@ void HomeView::connectSignal(){
         coinSearchWidget->hide();
         searchLineEdit->clearFocus();
     });
+
+    // geonwoo
+    // 코인 현재 가격 을 5초마다 한 번씩 가져옴
+    /*  코인 현재 가격 변경될 때마다 알림 가격 체크 박스가 체크되어 있을 때
+        현재 값에 따른 GPIO 점등 명령 전송함
+        알림 가격 이상일 때 : red, 알림 가격 이하일 때 : blue
+    */
+    connect(this, &HomeView::update_price_changed, this, &HomeView::on_update_price_changed);
+    update_price_timer = new QTimer(this);
+    connect(update_price_timer, &QTimer::timeout, this, [=] () {
+        qDebug() << "코인 가격 조회 주기(5초) timer 동작 중";
+        set_update_price(chartBox->getLineChart()->getLatestPrice());
+    });
+    update_price_timer->start(5000);
+
+    // geonwoo
+    /* 지정한 알림 가격의 값이 변경될 때 -> 알림 가격 체크 박스가 체크되어 있을 때
+        현재 값에 따른 GPIO 점등 명령 전송함
+        알림 가격 이상일 때 : red, 알림 가격 이하일 때 : blue
+    */
+    connect(doubleSpinBox_1, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [=](double val){
+        if(checkBox_1->isChecked()){
+            qDebug() << "doubleSpinBox 값 : " << val;
+            double update_prices = chartBox->getLineChart()->getLatestPrice();
+
+            // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
+            if(update_prices > val){
+                qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+            } else {
+                qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
+            }
+        }
+    });
+    /* 알림 가격이 checked 되어 있을 때 -> 현재 알림 가격 값
+        현재 값에 따른 GPIO 점등 명령 전송함
+        알림 가격 이상일 때 : red, 알림 가격 이하일 때 : blue
+    */
+    connect(checkBox_1, &QCheckBox::checkStateChanged, this, [=] (bool is_check){
+        if(is_check){
+            qDebug() << "checkbox 이후 doubleSpinBox 값 : " << doubleSpinBox_1->value();
+            double update_prices = chartBox->getLineChart()->getLatestPrice();
+
+            // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
+            if(update_prices > doubleSpinBox_1->value()){
+                qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+            } else {
+                qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
+            }
+        }
+    });
+}
+
+// geonwoo
+void HomeView::set_update_price(double new_price){
+
+    if(new_price != update_price){
+        update_price = new_price;
+        emit update_price_changed(update_price);
+    }
+}
+
+// geonwoo
+// update_price (코인 현재 가격) 이 변동될 때 (5초 타이머 동작)
+//        현재 값에 따른 GPIO 점등 명령 전송함
+//        알림 가격 이상일 때 : red, 알림 가격 이하일 때 : blue
+void HomeView::on_update_price_changed(double new_price){
+    if(checkBox_1->isChecked()){
+        qDebug() << "5초 타이머 마다 체크로 인한 update_price 변동 이후 update_price 값 : " << new_price;
+        qDebug() << "5초 타이머 마다 체크로 인한 update_price 변동 이후 doubleSpinBox 값 : " << doubleSpinBox_1->value();
+
+        // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
+        if(new_price > doubleSpinBox_1->value()){
+            qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+        } else {
+            qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
+            gpio_BLUE();
+        }
+    }
+}
+
+// geonwoo
+// 알림 설정 값보다 현재 코인 가격이 낮을 때 BLUE LED 점등 GPIO 값 전달(1)
+void HomeView::gpio_BLUE(){
+    // 라즈베리파이 wipi IP
+    QTcpSocket gpio_socket;
+    gpio_socket.connectToHost("192.168.2.97", 51234);
+
+    if (gpio_socket.waitForConnected(3000)) {
+        gpio_socket.write("1"); // LED 켜기 (wiringPi 점등 1) 데이터 write
+        gpio_socket.flush(); // 버퍼 바로 비워서 즉시 write 되도록 함
+        gpio_socket.waitForBytesWritten();  // write 완료 대기
+        /* 리스너 코드에서 계속 client 연결을 받아야 하므로 점등 한 번 시행 시
+         (임시) socket 의 연결은 끊어주도록 처리함 */
+        gpio_socket.disconnectFromHost();
+    }
 }
 
 void HomeView::setupUI()
@@ -380,7 +477,28 @@ void HomeView::setupUI()
     spinBox_2->setMinimumHeight(30);
     spinBox_2->setMaximum(99999);
     verticalLayout_3->addWidget(spinBox_2);
-    
+
+    // geonwoo
+    // GPIO_CONTROL
+    // 알림 가격 체크박스, doubleSpinBox 추가
+    // 알림 가격 체크박스 체크 시 -> textedit -> 값 read -> up : red, down : blue
+    checkBox_1 = new QCheckBox("알림 설정");
+    checkBox_1->setMinimumHeight(40);
+    checkBox_1->setFont(font);
+    verticalLayout_3->addWidget(checkBox_1);
+
+    doubleSpinBox_1 = new QDoubleSpinBox();
+    doubleSpinBox_1->resize(150, 40);
+    doubleSpinBox_1->setMinimum(0.00);
+
+    // 9억 99999999
+    doubleSpinBox_1->setMaximum(999999999.99);
+    doubleSpinBox_1->setDecimals(2);
+    doubleSpinBox_1->setValue(0.00);
+    doubleSpinBox_1->setSingleStep(0.01);
+    verticalLayout_3->addWidget(doubleSpinBox_1);
+
+
     verticalLayout_4->addLayout(verticalLayout_3);
     
     QSpacerItem *verticalSpacer_3 = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
@@ -694,7 +812,6 @@ void HomeView::setAccountInfo(const QJsonObject &userInfo, const QJsonArray &his
         orderTotal->append(total);
     }
 }
-
 
 HomeView::~HomeView()
 {

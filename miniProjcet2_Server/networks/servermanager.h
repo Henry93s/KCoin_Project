@@ -13,7 +13,6 @@ class ServerManager : public QObject {
 public:
     static ServerManager& getInstance();
     QString getMyIP();
-    void gpio_serverOn();
 
 public slots:
     void addClient(ClientHandler* handler);

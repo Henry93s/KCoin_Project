@@ -163,6 +163,9 @@ void CandleChart::updateCandleData(const QList<CandleData> &candleDataList){
                             .arg(latestTime.toString("hh:mm:ss"));
         candleChart->setTitle(title);
 
+
+        // candle 차트에서 실시간 가격 확인
+        // qDebug() << priceStr;
     }
     
 }

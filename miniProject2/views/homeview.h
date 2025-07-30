@@ -20,6 +20,9 @@
 #include <QFrame>
 #include <QTimer>
 #include <QEvent>
+#include <QCheckBox>
+#include <QString>
+#include <QTcpSocket>
 
 #include "coinsearchwidget.h"
 #include "coinsearchlineedit.h"
@@ -34,6 +37,7 @@ public:
     explicit HomeView(QWidget *parent = nullptr);
     ~HomeView();
     void setAccountInfo(const QJsonObject &userInfo, const QJsonArray &history);
+    void set_update_price(double new_price);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;
@@ -56,6 +60,11 @@ private:
     QSpinBox *spinBox_2;
     QRadioButton *radioButton;
     QRadioButton *radioButton_2;
+    // geonwoo
+    // 지정 가격 checkBox_1, 지정 가격 textEdit_1 추가
+    QCheckBox* checkBox_1;
+    QDoubleSpinBox* doubleSpinBox_1;
+
     QPushButton *pushButton;
     QTextBrowser *orderType;
     QTextBrowser *orderDate;
@@ -74,10 +83,21 @@ private:
     void setupUI();
     void connectSignal();
 
+    // geonwoo
+    // 코인 현재 가격 을 5초마다 한 번씩 가져옴
+    QTimer* update_price_timer;
+    double update_price = -1.00;
 
+    // geonwoo
+    // 알림 설정 값보다 현재 코인 가격이 낮을 때 BLUE LED 점등 GPIO 값 전달(1)
+    void gpio_BLUE();
+
+signals:
+  void update_price_changed(double new_price);
 
 private slots:
-    void handleTradeResponse(const QJsonObject &obj);
+   void handleTradeResponse(const QJsonObject &obj);
+   void on_update_price_changed(double new_price);
 };
 
 #endif // HOMEVIEW_H

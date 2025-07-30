@@ -71,6 +71,7 @@ void LineChartDataManager::dataFormat(QJsonDocument json){
         // QPointF로 데이터 저장 (x: 시간, y: 거래가) - Devwooms
         QPointF tradePoint(timestamp, tradePrice);
         lineDataList.append(tradePoint);
+
     }
 
     // 데이터 전달 -> lineChart로 - Devwooms
