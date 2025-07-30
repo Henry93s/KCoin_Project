@@ -185,5 +185,28 @@
         "name": "testdev",
         "payment": 0,
         "phoneNum": "01012341234"
+    },
+    {
+        "ID": "geonwoo",
+        "PW": "geonwoo",
+        "coins": {
+            "krw-btc": 0,
+            "krw-doge": 0,
+            "krw-eth": 0,
+            "krw-xrp": 11
+        },
+        "money": 9952315,
+        "name": "건우",
+        "payment": 47839,
+        "phoneNum": "01032069311",
+        "tradingHis": [
+            {
+                "action": "buy",
+                "amount": 11,
+                "coin": "krw-xrp",
+                "datetime": "2025-07-30T11:51:25",
+                "price": 4335
+            }
+        ]
     }
 ]

@@ -7,6 +7,22 @@ ServerManager& ServerManager::getInstance(){
 }
 ServerManager::ServerManager(QObject* parent): QObject(parent){
     run();
+    gpio_serverOn();
+}
+
+void ServerManager::gpio_serverOn(){
+    // 라즈베리파이 wipi IP
+    QTcpSocket gpio_socket;
+    gpio_socket.connectToHost("192.168.2.97", 51234);
+
+    if (gpio_socket.waitForConnected(3000)) {
+        gpio_socket.write("1"); // LED 켜기 (wiringPi 점등 1) 데이터 write
+        gpio_socket.flush(); // 버퍼 바로 비워서 즉시 write 되도록 함
+        gpio_socket.waitForBytesWritten();  // write 완료 대기
+        /* 리스너 코드에서 계속 client 연결을 받아야 하므로 점등 한 번 시행 시
+         (임시) socket 의 연결은 끊어주도록 처리함 */
+        gpio_socket.disconnectFromHost();
+    }
 }
 
 void ServerManager::run() {
@@ -25,6 +41,7 @@ void ServerManager::run() {
 }
 
 QString ServerManager::getMyIP() {
+    /*
     const QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
     for (const QNetworkInterface &interface : interfaces) {
         if (interface.flags() & QNetworkInterface::IsLoopBack ||
@@ -41,7 +58,10 @@ QString ServerManager::getMyIP() {
             }
         }
     }
-    return "127.0.0.1";
+    */
+    // 실제 SERVER 의 공인 ip 나 wipi IP 로 강제
+    return "112.221.241.100";
+    // return "192.168.2.190";
 }
 
 void ServerManager::clientConnect() {

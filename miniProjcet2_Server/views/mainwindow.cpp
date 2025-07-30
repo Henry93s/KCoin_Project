@@ -51,6 +51,7 @@ MainWindow::~MainWindow()
 // 현재 컴퓨터의 외부에서 접근 가능한 IP 가져오기 - devwooms
 QString MainWindow::getMyIP()
 {
+
     // 현재 컴퓨터에 있는 모든 네트워크 인터페이스 목록 가져오기 - devwooms
     const QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
     
@@ -82,7 +83,7 @@ QString MainWindow::getMyIP()
             }
         }
     }
-    
+
     // IP를 못 찾을 경우 로컬로 반환 - devwooms
     return "127.0.0.1";
 }
