@@ -198,8 +198,10 @@ void HomeView::connectSignal(){
             // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
             if(update_prices > val){
                 qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+                gpio_Up_LED();
             } else {
                 qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
+                gpio_Down_LED();
             }
         }
     });
@@ -215,8 +217,10 @@ void HomeView::connectSignal(){
             // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
             if(update_prices > doubleSpinBox_1->value()){
                 qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+                gpio_Up_LED();
             } else {
                 qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
+                gpio_Down_LED();
             }
         }
     });
@@ -243,22 +247,40 @@ void HomeView::on_update_price_changed(double new_price){
         // 코인 현재가가 알림 가격보다 더 크거나 같을 땐 RED
         if(new_price > doubleSpinBox_1->value()){
             qDebug() << "코인 현재가가 알림 가격보다 큼 RED";
+            gpio_Up_LED();
         } else {
             qDebug() << "코인 현재가가 알림 가격보다 작을 때는 BLUE";
-            gpio_BLUE();
+            gpio_Down_LED();
         }
     }
 }
 
 // geonwoo
-// 알림 설정 값보다 현재 코인 가격이 낮을 때 BLUE LED 점등 GPIO 값 전달(1)
-void HomeView::gpio_BLUE(){
+// 알림 설정 값보다 현재 코인 가격이 낮을 때 느린 LED 점등 GPIO 값과 비프음 시그널 전달(1)
+void HomeView::gpio_Down_LED(){
     // 라즈베리파이 wipi IP
     QTcpSocket gpio_socket;
     gpio_socket.connectToHost("192.168.2.97", 51234);
 
     if (gpio_socket.waitForConnected(3000)) {
-        gpio_socket.write("1"); // LED 켜기 (wiringPi 점등 1) 데이터 write
+        gpio_socket.write("1"); // LED 켜기 데이터 write
+        gpio_socket.flush(); // 버퍼 바로 비워서 즉시 write 되도록 함
+        gpio_socket.waitForBytesWritten();  // write 완료 대기
+        /* 리스너 코드에서 계속 client 연결을 받아야 하므로 점등 한 번 시행 시
+         (임시) socket 의 연결은 끊어주도록 처리함 */
+        gpio_socket.disconnectFromHost();
+    }
+}
+
+// geonwoo
+// 알림 설정 값보다 현재 코인 가격이 클 때 빠른 LED 점등 GPIO 값과 비프음 시그널 전달(2)
+void HomeView::gpio_Up_LED(){
+    // 라즈베리파이 wipi IP
+    QTcpSocket gpio_socket;
+    gpio_socket.connectToHost("192.168.2.97", 51234);
+
+    if (gpio_socket.waitForConnected(3000)) {
+        gpio_socket.write("2"); // LED 켜기 데이터 write
         gpio_socket.flush(); // 버퍼 바로 비워서 즉시 write 되도록 함
         gpio_socket.waitForBytesWritten();  // write 완료 대기
         /* 리스너 코드에서 계속 client 연결을 받아야 하므로 점등 한 번 시행 시
@@ -304,9 +326,6 @@ void HomeView::setupUI()
     comboBox = new QComboBox();
     chartTab->addWidget(comboBox);
     
-
-    
-
     tapwidget->addTab(tab, "시세");
 
     // 계좌 탭

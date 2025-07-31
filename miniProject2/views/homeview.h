@@ -89,8 +89,10 @@ private:
     double update_price = -1.00;
 
     // geonwoo
-    // 알림 설정 값보다 현재 코인 가격이 낮을 때 BLUE LED 점등 GPIO 값 전달(1)
-    void gpio_BLUE();
+    // 알림 설정 값보다 현재 코인 가격이 낮을 때 LED 점등 빠르게 GPIO 값 + (비프음 신호 시그널) 전달(1)
+    void gpio_Down_LED();
+    // 알림 설정 값보다 현재 코인 가격이 클 때 LED 점등 느리게 GPIO 값 + (비프음 신호 시그널) 전달
+    void gpio_Up_LED();
 
 signals:
   void update_price_changed(double new_price);
