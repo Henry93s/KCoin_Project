@@ -8,6 +8,9 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QTimer> // QTimer 추가
+#include "../services/chatting_limiter.h"
+
+ChattingLimiter limiter;
 
 //==================================
 //        채팅방 기능 구현
@@ -110,8 +113,15 @@ ChattingRoomView::ChattingRoomView(const QString& name, QWidget *parent)
             // 메시지 복사본 생성 (참조 문제 방지)
             QString messageCopy = QString(message);
 
-            sendingManage::instance()->sendMessage(chatViewName, messageCopy);
-            qDebug() << "메시지 전송 시도: " << messageCopy;
+            // geonwoo
+            // true : 1초에 3회 초과 채팅 메시지 연결 시도로 채팅이 30초 동안 제한됨
+            if(limiter.allowSendMsgCheck()){
+                sendingManage::instance()->sendMessage(chatViewName, messageCopy);
+                qDebug() << "메시지 전송 시도: " << messageCopy;
+            } else {
+                // false : 채팅 제한 없음
+                qDebug() << "채팅이 차단되어 있음";
+            }
         }
     });
 
@@ -124,8 +134,16 @@ ChattingRoomView::ChattingRoomView(const QString& name, QWidget *parent)
         if (!message.isEmpty()) {
             lineEdit->clear();
             QString messageCopy = QString(message);
-            sendingManage::instance()->sendMessage(chatViewName, messageCopy);
-            qDebug() << "[Enter] 메시지 전송 시도: " << messageCopy;
+
+            // geonwoo
+            // true : 1초에 3회 초과 채팅 메시지 연결 시도로 채팅이 30초 동안 제한됨
+            if(limiter.allowSendMsgCheck()){
+                sendingManage::instance()->sendMessage(chatViewName, messageCopy);
+                qDebug() << "[Enter] 메시지 전송 시도: " << messageCopy;
+            } else {
+                // false : 채팅 제한 없음
+                qDebug() << "채팅이 차단되어 있음";
+            }
         }
     });
 
@@ -139,8 +157,16 @@ ChattingRoomView::ChattingRoomView(const QString& name, QWidget *parent)
             if (!message.isEmpty()) {
                 lineEdit->clear();
                 QString messageCopy = QString(message);
-                sendingManage::instance()->sendMessage(chatViewName, messageCopy);
-                qDebug() << "[지연] 메시지 전송 시도: " << messageCopy;
+
+                // geonwoo
+                // true : 1초에 3회 초과 채팅 메시지 연결 시도로 채팅이 30초 동안 제한됨
+                if(limiter.allowSendMsgCheck()){
+                    sendingManage::instance()->sendMessage(chatViewName, messageCopy);
+                    qDebug() << "[지연] 메시지 전송 시도: " << messageCopy;
+                } else {
+                    // false : 채팅 제한 없음
+                    qDebug() << "채팅이 차단되어 있음";
+                }
             }
         });
     };

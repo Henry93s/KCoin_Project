@@ -16,6 +16,7 @@ SOURCES += \
     models/filesendmanager.cpp \
     models/smtpemailsender.cpp \
     services/chartdatamanager.cpp \
+    services/chatting_limiter.cpp \
     views/chattingRoomView.cpp \
     views/coinsearchlineedit.cpp \
     views/coinsearchwidget.cpp \
@@ -43,6 +44,7 @@ HEADERS += \
     models/filesendmanager.h \
     models/smtpemailsender.h \
     services/chartdatamanager.h \
+    services/chatting_limiter.h \
     views/chattingRoomView.h \
     views/coinsearchlineedit.h \
     views/coinsearchwidget.h \
