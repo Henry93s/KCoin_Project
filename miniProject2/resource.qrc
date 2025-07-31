@@ -14,5 +14,7 @@
         <file>assets/Bitcoin.ico</file>
         <file>assets/Bitcoin.icns</file>
         <file>assets/warning.png</file>
+        <file>assets/writing.png</file>
+        <file>assets/eraser.png</file>
     </qresource>
 </RCC>

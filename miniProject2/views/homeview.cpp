@@ -7,6 +7,8 @@
 #include <QSizePolicy>
 #include <QDebug>
 #include "models/sendingManage.h"
+//#include "post.h"
+//#include "postmanager.h"
 
 HomeView::HomeView(QWidget *parent)
     : QWidget(parent)
@@ -126,7 +128,6 @@ void HomeView::connectSignal(){
         qDebug() << "거래신호 전송:" << coinName << action << ", 수량:" << amount << ", 가격:" << price;
     });
 
-
     // comboBox에서 선택시 선택 코인의 데이터를 가져오도록 연결
     connect(comboBox, &QComboBox::currentIndexChanged, this, [this](int index) {
         QString text = comboBox->itemText(index);
@@ -206,9 +207,6 @@ void HomeView::setupUI()
     // 드롭다운
     comboBox = new QComboBox();
     chartTab->addWidget(comboBox);
-    
-
-    
 
     tapwidget->addTab(tab, "시세");
 
@@ -321,6 +319,143 @@ void HomeView::setupUI()
     verticalLayout->addLayout(horizontalLayout_3);
     
     tapwidget->addTab(tab_2, "계좌");
+
+    // 게시판 탭 - tab_5
+    QWidget *tab_5 = new QWidget();
+    QVBoxLayout *mainLayout = new QVBoxLayout(tab_5);
+
+    // 1. "자유게시판" 라벨 (상단 1/10 비율)
+    QLabel *titleLabel = new QLabel("자유게시판");
+    titleLabel->setAlignment(Qt::AlignCenter);
+    titleLabel->setStyleSheet("font-size: 18px; font-weight: bold;");
+    mainLayout->addWidget(titleLabel, 1);  // stretch: 1
+
+    // 2. 글 제목 목록 (QListWidget) (중간 8/10 비율)
+    postListWidget = new QListWidget();
+    postListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    mainLayout->addWidget(postListWidget, 8);  // stretch: 8
+
+    // 전체 버튼을 감싸는 수직 레이아웃
+    QVBoxLayout *buttonLayout = new QVBoxLayout();
+
+    // =====================
+    // 글 생성 영역
+    // =====================
+    QPushButton* uploadWriting = new QPushButton("글쓰기");
+    uploadWriting->setIcon(QIcon(":/assets/assets/writing.png"));
+    uploadWriting->setIconSize(QSize(20, 20));
+    uploadWriting->setMinimumHeight(35);
+
+    // =====================
+    // 삭제 영역
+    // =====================
+    QPushButton* deleteWriting = new QPushButton("삭제하기");
+    deleteWriting->setIcon(QIcon(":/assets/assets/eraser.png"));
+    deleteWriting->setIconSize(QSize(20, 20));
+    deleteWriting->setMinimumHeight(35);
+
+    // 버튼을 수직으로 추가
+    buttonLayout->addWidget(uploadWriting);
+    buttonLayout->addWidget(deleteWriting);
+
+    // 버튼 간 여백 조절하고, stretch 없앰
+    buttonLayout->setSpacing(10);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 최종 배치 (예: 글 목록 하단)
+    mainLayout->addLayout(buttonLayout);  // ← stretch 제거
+
+    connect(uploadWriting, &QPushButton::clicked, [this]() {
+        QDialog dialog(this);
+        dialog.setWindowTitle("Welcome");
+
+        QVBoxLayout* vbox = new QVBoxLayout(&dialog);
+        QLineEdit* TitleEdit=new QLineEdit(&dialog);
+        TitleEdit->setPlaceholderText("글의 제목을 입력하세요");
+        vbox->addWidget(new QLabel("글의 제목"));
+        vbox->addWidget(TitleEdit);
+
+        QTextEdit* mainWriting=new QTextEdit(&dialog);
+        mainWriting->setPlaceholderText("본문을 입력하세요");
+        vbox->addWidget(new QLabel("본문 내용"));
+        vbox->addWidget(mainWriting);
+
+        // 글 올리기 버튼
+//        QPushButton* submitBtn = new QPushButton("올리기", &dialog);
+//        vbox->addWidget(submitBtn);
+
+        QDialogButtonBox* buttonBox=new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        vbox->addWidget(buttonBox);
+
+        // [확인] 버튼 처리
+        connect(buttonBox, &QDialogButtonBox::accepted, [&]() {
+            QString title = TitleEdit->text().trimmed();
+            QString content = mainWriting->toPlainText().trimmed();
+
+            if (!title.isEmpty()) {
+                // TODO: 서버 또는 DB 저장 로직 여기에
+
+                // 리스트 최상단에 글 제목 추가
+                QListWidgetItem* item = new QListWidgetItem(title);
+                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                item->setCheckState(Qt::Unchecked);
+                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+                item->setData(Qt::UserRole, content);  // 본문 저장
+                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+            }
+            dialog.accept();
+        });
+
+        // [취소] 버튼
+        connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        dialog.exec();  // 다이얼로그 실행
+    });
+
+    connect(postListWidget, &QListWidget::itemDoubleClicked, [this](QListWidgetItem* item) {
+        QString title = item->text();
+        QString content = item->data(Qt::UserRole).toString();
+
+        // 본문 보기 다이얼로그
+        QDialog readDialog(this);
+        readDialog.setWindowTitle("[" + title + "]");
+
+        QVBoxLayout* layout = new QVBoxLayout(&readDialog);
+        QTextEdit* contentView = new QTextEdit(content);
+        contentView->setReadOnly(true);
+        layout->addWidget(new QLabel("본문 내용"));
+        layout->addWidget(contentView);
+
+        QPushButton* closeBtn = new QPushButton("닫기");
+        layout->addWidget(closeBtn);
+        connect(closeBtn, &QPushButton::clicked, &readDialog, &QDialog::accept);
+
+        readDialog.resize(400, 300);
+        readDialog.exec();
+    });
+
+/*
+        // 올리기 버튼 클릭 시 동작
+        connect(submitBtn, &QPushButton::clicked, [&]() {
+            QString title = TitleEdit->text().trimmed();
+            QString content = mainWriting->toPlainText().trimmed();
+            if (title.isEmpty() || content.isEmpty()) {
+                QMessageBox::warning(&dialog, "입력 오류", "제목과 내용을 모두 입력해주세요.");
+                return;
+            }
+
+            // TODO: 서버 or DB에 글 저장하는 로직 호출
+            qDebug() << "[글쓰기] 제목:" << title << "/ 내용:" << content;
+
+            dialog.accept();  // 다이얼로그 닫기
+        });
+
+        dialog.exec();  // ← 다이얼로그 띄우기 (모달)
+    });
+*/
+    // 탭 추가
+    tapwidget->addTab(tab_5, "게시판");
     
     splitter->addWidget(tapwidget);
     
@@ -394,7 +529,7 @@ void HomeView::setupUI()
     pushButton = new QPushButton("PushButton");
     pushButton->setMinimumHeight(50);
     horizontalLayout_5->addWidget(pushButton);
-    
+
     QSpacerItem *horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalLayout_5->addItem(horizontalSpacer_3);
     
@@ -542,7 +677,6 @@ void HomeView::setupUI()
 
         dialog.exec();
     });
-
 
     oneByMore_listWidget = new QListWidget();
     verticalLayout_7->addWidget(oneByMore_listWidget);
