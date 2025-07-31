@@ -4,19 +4,53 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <wiringPi.h>
+#include <softTone.h>
 
 #define PORT 51234       // 라즈베리파이에서 열 포트 번호
 #define BUFSIZE 32
+#define SPKR	6	// GPIO25 에 해당하는 wiringPi 번호
 
-int ledControl(int gpio) {
+
+
+// 지정 가격보다 현재 코인가격이 하락일 때
+void playSystemDownSound(){
+	system("aplay /home/pi/raspberry_gpio_receiver/raspberry_gpio_receiver/down.wav &"); // 시스템 재생
+}
+void playDownTone(){
+	softToneCreate(SPKR);
+	softToneWrite(SPKR, 1760); // A6 (음)
+	delay(400);
+	softToneWrite(SPKR, 0); // 음 멈춤
+}	
+int ledControl_down(int gpio) {
     pinMode(gpio, OUTPUT);
-    for (int i = 0; i < 5; i++) {
+	playDownTone();
+	// playSystemDownSound();
+	for (int i = 0; i < 3; i++) {
         digitalWrite(gpio, HIGH);
-        delay(1000);
+        delay(250);
         digitalWrite(gpio, LOW);
-        delay(1000);
+        delay(250);
     }
     return 0;
+}
+
+// 지정 가격보다 현재 코인가격이 상승일 때
+void playSystemUpSound(){
+	 system("aplay /home/pi/raspberry_gpio_receiver/raspberry_gpio_receiver/up.wav &"); // 시스템 재생
+}
+void playUpTone(){
+	softToneCreate(SPKR);
+	softToneWrite(SPKR, 587); // 음 : D5
+	delay(400);
+	softToneWrite(SPKR, 0); // 음 멈춤
+}
+int ledControl_up(int gpio){
+	pinMode(gpio, OUTPUT);
+	playUpTone();
+	// playSystemUpSound();
+	digitalWrite(gpio, 0);
+	return 0;
 }
 
 int main() {
@@ -75,11 +109,20 @@ while(1){
 	printf("Received command: %s\n", buffer);
 
     int gpio_num = atoi(buffer); // 메시지가 GPIO 번호라면 정수로 변환
-    if (gpio_num >= 0 && gpio_num <= 29) {
-        ledControl(gpio_num);
-    } else {
-        printf("Invalid GPIO number\n");
-    }
+
+	switch(gpio_num){
+		case 1:
+			// down
+			ledControl_down(1);
+			break;
+		case 2:
+			// up
+			ledControl_up(1);
+			break;
+		default:
+			printf("Invalid GPIO number\n");
+			break;
+	}
 	close(client_fd);
 	
 }
