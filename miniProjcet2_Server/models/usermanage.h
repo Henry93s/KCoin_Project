@@ -10,6 +10,7 @@
 #include <QJsonArray>       // Json관련 라이브러리
 #include <QJsonObject>      // Json관련 라이브러리
 #include <QDebug>           // 디버깅 출력 라이브러리
+#include <QSqlQuery>
 
 using namespace std;
 
@@ -54,7 +55,8 @@ public:
     void increaseReport(const QString& name, const QString& reason);
     bool isBanned(const QString& name);
     QString getDBPath();                           // DB 파일 경로 찾기
-
+signals:
+    QSqlQuery requestQuery(const QString& strQuery, bool& isSuccess);
 private:
 
     //========== 시그널
