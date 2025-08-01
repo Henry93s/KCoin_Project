@@ -7,7 +7,6 @@
 #include <QNetworkInterface>
 #include <QHostAddress>
 
-
 #define PORT_NUM  51234
 
 
@@ -16,6 +15,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+
     /*  ================== 서버 구현함에 따라 주석처리
     // 클라이언트 소켓 리스트 - devwooms
     clientSocketList = new QList<QTcpSocket*>();

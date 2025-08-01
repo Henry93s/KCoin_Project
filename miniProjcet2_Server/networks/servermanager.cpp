@@ -6,6 +6,15 @@ ServerManager& ServerManager::getInstance(){
     return instance;
 }
 ServerManager::ServerManager(QObject* parent): QObject(parent){
+    db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setHostName("192.168.2.155");      // IP 또는 DNS Host name
+    db.setPort(3306);
+    db.setDatabaseName("coin"); // DB명
+    db.setUserName("cointest");     // 계정 명
+    db.setPassword("cointest");     // 계정 Password
+    db.open();
+    qDebug() << db.lastError();
+
     run();
 }
 
@@ -58,6 +67,11 @@ void ServerManager::clientConnect() {
 
     QThread *thread = new QThread;
 
+    // clientSocket->setParent(nullptr);
+    // ClientSetup* setup = new ClientSetup(clientSocket);
+    // setup->setParent(nullptr);
+    // setup->moveToThread(thread);
+    // clientSocket->moveToThread(thread);
     ClientSetup* setup = new ClientSetup(clientSocket);
     setup->moveToThread(thread);
 
@@ -67,7 +81,11 @@ void ServerManager::clientConnect() {
         connect(handler,&ClientHandler::disconnected,this,&ServerManager::removeClient);
         connect(thread,&QThread::finished,handler,&QObject::deleteLater);
         connect(thread, &QThread::finished,socket,&QObject::deleteLater);
-        
+
+        // DB Query
+        connect(handler, &ClientHandler::requestQuery, this, &ServerManager::retQuery);
+        connect(handler->GetUserMange(), &userManage::requestQuery, this, &ServerManager::retQuery);
+
         // 클라이언트를 브로드캐스트 리스트에 추가 - devwooms
         this->addClient(handler);
         qDebug() << "클라이언트가 브로드캐스트 리스트에 추가됨. 총 클라이언트 수:" << clientHandlerList.size();
@@ -77,6 +95,14 @@ void ServerManager::clientConnect() {
     connect(thread, &QThread::finished, setup, &QObject::deleteLater);
 
     thread->start();
+}
+
+QSqlQuery ServerManager::retQuery(const QString &strQuery, bool& isSuccess)
+{
+    QSqlQuery query;
+    query.prepare(strQuery);
+    isSuccess = query.exec();
+    return query;
 }
 
 void ServerManager::addClient(ClientHandler* handler){

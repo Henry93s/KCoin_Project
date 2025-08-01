@@ -6,7 +6,12 @@
 #include <QThread>
 #include <QList>
 #include <QString>
+
+#include <QSqlQuery>
+
 #include "usermanage.h"
+
+class QJsonObject;
 
 class ClientHandler : public QObject {
     Q_OBJECT
@@ -23,7 +28,22 @@ public slots:
     void onDisconnected();
     void sendMessageToClient(QByteArray data);
 
+signals:
+    QSqlQuery requestQuery(const QString& strQuery, bool& isSuccess);
 
+public:
+    userManage* GetUserMange() { return usermanage;}
+private:
+    void readyRead_LoginRequest(const QJsonObject& obj);
+    void readyRead_SignRequest(const QJsonObject& obj);
+    void readyRead_MessageSendRequest(const QJsonObject& obj);
+    void readyRead_FileSend(const QJsonObject& obj);
+    void readyRead_FileDownload(const QJsonObject& obj);
+    void readyRead_GiveLog(const QJsonObject& obj);
+    void readyRead_Trade(const QJsonObject& obj);
+    void readyRead_Report(const QJsonObject& obj);
+    void readyRead_EmailCheck(const QJsonObject& obj);
+    void readyRead_Emailcodecheck(const QJsonObject& obj);
 private:
     QTcpSocket* socket;
     qintptr socketDescriptor;

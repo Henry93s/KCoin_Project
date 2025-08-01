@@ -7,6 +7,8 @@
 #include "clientHandler.h"
 #include "clientsetup.h"
 #include <QMutex>
+#include <QtSql>
+#include <QSqlDatabase>
 
 class ServerManager : public QObject {
     Q_OBJECT
@@ -14,11 +16,14 @@ public:
     static ServerManager& getInstance();
     QString getMyIP();
 
+    QSqlDatabase& getDB() { return db; }
 public slots:
     void addClient(ClientHandler* handler);
     void removeClient(ClientHandler* handler);
     void broadcastMessage(QByteArray& data);
     void clientConnect();
+
+    QSqlQuery retQuery(const QString& strQuery, bool& isSuccess);
 
 private:
     QTcpServer* tcpServer;
@@ -29,6 +34,8 @@ private:
     ServerManager(const ServerManager&) = delete;               // 복사 생성자 삭제
     ServerManager& operator=(const ServerManager&) = delete;    // 대입 연산자 삭제
     QMutex clientListMutex;
+
+    QSqlDatabase db;
 
     void run();
 };
