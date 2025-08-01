@@ -84,6 +84,7 @@ void ServerManager::clientConnect() {
 
         // DB Query
         connect(handler, &ClientHandler::requestQuery, this, &ServerManager::retQuery);
+        connect(handler, &ClientHandler::requestBindQuery, this, &ServerManager::retBindQuery);
         connect(handler->GetUserMange(), &userManage::requestQuery, this, &ServerManager::retQuery);
 
         // 클라이언트를 브로드캐스트 리스트에 추가 - devwooms
@@ -101,6 +102,12 @@ QSqlQuery ServerManager::retQuery(const QString &strQuery, bool& isSuccess)
 {
     QSqlQuery query;
     query.prepare(strQuery);
+    isSuccess = query.exec();
+    return query;
+}
+
+QSqlQuery ServerManager::retBindQuery(const QSqlQuery& bindQuery, bool& isSuccess){
+    QSqlQuery query = bindQuery;
     isSuccess = query.exec();
     return query;
 }

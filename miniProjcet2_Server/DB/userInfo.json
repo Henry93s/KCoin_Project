@@ -193,11 +193,11 @@
             "krw-btc": 0,
             "krw-doge": 0,
             "krw-eth": 0,
-            "krw-xrp": 11
+            "krw-xrp": 1
         },
-        "money": 9952315,
+        "money": 9994375,
         "name": "건우",
-        "payment": 47839,
+        "payment": 5779,
         "phoneNum": "01032069311",
         "tradingHis": [
             {
@@ -206,6 +206,13 @@
                 "coin": "krw-xrp",
                 "datetime": "2025-07-30T11:51:25",
                 "price": 4335
+            },
+            {
+                "action": "sell",
+                "amount": 10,
+                "coin": "krw-xrp",
+                "datetime": "2025-08-01T09:08:11",
+                "price": 4206
             }
         ]
     }

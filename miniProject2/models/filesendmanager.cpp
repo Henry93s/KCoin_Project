@@ -10,19 +10,20 @@ FileSendManager::FileSendManager(QObject *parent)
 
 }
 
-void FileSendManager::sendFile(QTcpSocket *socket, QString type, QString& chatViewName, QStringList filePaths, const QString& senderName){
+void FileSendManager::sendFile(QTcpSocket *socket, QString type, QString& chatViewName, QStringList filePaths, const QString& senderName, const QString& senderID){
     qDebug() << "FileSendManager sendFile: 파일 전송 시작";
     qDebug() << "전송할 파일 개수:" << filePaths.size();
     qDebug() << "전송자:" << senderName;
+    qDebug() << "전송 ID: " << senderID;
     
     for (int i = 0; i < filePaths.size(); ++i) {
-        if (!sendSingleFileAsJson(socket, filePaths[i], chatViewName, type, senderName)) {
+        if (!sendSingleFileAsJson(socket, filePaths[i], chatViewName, type, senderName, senderID)) {
             qDebug() << "파일 전송 실패:" << filePaths[i];
         }
     }
 }
 
-bool FileSendManager::sendSingleFileAsJson(QTcpSocket *socket, const QString& filePath, const QString& chatViewName, const QString& type, const QString& senderName) {
+bool FileSendManager::sendSingleFileAsJson(QTcpSocket *socket, const QString& filePath, const QString& chatViewName, const QString& type, const QString& senderName, const QString& senderID) {
     QFile file(filePath);
     QFileInfo fileInfo(filePath);
     
@@ -69,6 +70,7 @@ bool FileSendManager::sendSingleFileAsJson(QTcpSocket *socket, const QString& fi
     sendingObj["type"] = type;
     sendingObj["chatViewName"] = chatViewName;
     sendingObj["senderName"] = senderName;  // ← 전송자 이름 추가
+    sendingObj["senderID"] = senderID;
     sendingObj["fileId"] = fileId;
     sendingObj["fileName"] = fileInfo.fileName();
     sendingObj["originalPath"] = filePath;  // 클라이언트의 원본 파일 경로

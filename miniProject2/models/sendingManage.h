@@ -52,8 +52,14 @@ public:
     static sendingManage* m_instance;
     sendingManage();
 
+    // geonwoo
+    // 전송자 ID
+    void setSenderID(const QString& ID);
+
 private:
     QString senderName;
+    // geonwoo
+    QString senderID;
 };
 
 #endif // SENDINGMANAGE_H

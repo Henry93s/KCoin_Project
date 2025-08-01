@@ -24,6 +24,7 @@ public slots:
     void clientConnect();
 
     QSqlQuery retQuery(const QString& strQuery, bool& isSuccess);
+    QSqlQuery retBindQuery(const QSqlQuery& bindQuery, bool& isSuccess);
 
 private:
     QTcpServer* tcpServer;
