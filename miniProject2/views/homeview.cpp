@@ -326,11 +326,7 @@ void HomeView::setupUI()
     // 드롭다운
     comboBox = new QComboBox();
     chartTab->addWidget(comboBox);
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> hyungoo
     tapwidget->addTab(tab, "시세");
 
     // 계좌 탭
