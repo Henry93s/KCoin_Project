@@ -13,6 +13,7 @@ INCLUDEPATH += views networks models DB
 SOURCES += \
     models/clientHandler.cpp \
     main.cpp \
+    DBCore/postManager.cpp \
     views/mainwindow.cpp \
     networks/clientsetup.cpp \
     networks/servermanager.cpp \
@@ -21,6 +22,8 @@ SOURCES += \
 HEADERS += \
     models/clientHandler.h \
     views/mainwindow.h \
+    DBCore/postManager.h \
+    DBCore/post.h \
     networks/clientsetup.h \
     networks/servermanager.h \
     models/usermanage.h

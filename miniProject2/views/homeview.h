@@ -66,20 +66,26 @@ private:
     QDoubleSpinBox* doubleSpinBox_1;
 
     QPushButton *pushButton;
+    QPushButton *writePostButton;
+    QPushButton *deletePostButton;
+
     QTextBrowser *orderType;
     QTextBrowser *orderDate;
     QTextBrowser *orderAmount;
     QTextBrowser *orderPrice;
     QTextBrowser *orderTotal;
+    QTextEdit *postContentEdit;
+
     QToolBox *chatting_ToolBox;
     QListWidget *connect_listWidget;
     QListWidget *oneByone_listWidget;
     QListWidget *oneByMore_listWidget;
+    QListWidget *postListWidget;
 
     QLineEdit* searchLineEdit;
     // CoinSearchLineEdit* searchLineEdit;
     CoinSearchWidget *coinSearchWidget;
-    
+
     void setupUI();
     void connectSignal();
 

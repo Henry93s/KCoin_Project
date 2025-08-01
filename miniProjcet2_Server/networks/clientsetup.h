@@ -19,5 +19,4 @@ signals:
     void socketReady(QTcpSocket* socket);
 };
 
-
 #endif // CLIENTSETUP_H
