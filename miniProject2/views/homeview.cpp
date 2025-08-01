@@ -364,7 +364,28 @@ void HomeView::setupUI()
 
     // 최종 배치 (예: 글 목록 하단)
     mainLayout->addLayout(buttonLayout);  // ← stretch 제거
-
+/*
+    postListWidget = new QListWidget();
+    postListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    postListWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);  // 스크롤 항상 보이기
+    postListWidget->setStyleSheet(R"(
+    QListWidget::item {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 10px;
+        margin: 5px;
+        border: 1px solid #888;
+        border-radius: 6px;
+        background-color: #f4f4f4;
+    }
+    QListWidget::item:selected {
+        background-color: #d0ebff;
+        border: 2px solid #0078d7;
+    }
+)");
+    mainLayout->addWidget(postListWidget, 8);  // 기존 8/10 비율 유지
+*/
+    // QString currentUserId = "jhn00162";
     connect(uploadWriting, &QPushButton::clicked, [this]() {
         QDialog dialog(this);
         dialog.setWindowTitle("Welcome");
@@ -402,6 +423,8 @@ void HomeView::setupUI()
                 item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
 
                 item->setData(Qt::UserRole, content);  // 본문 저장
+                // item->setData(Qt::UserRole + 1, currentUserId);
+
                 postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
             }
             dialog.accept();
@@ -435,6 +458,39 @@ void HomeView::setupUI()
         readDialog.exec();
     });
 
+    connect(deleteWriting, &QPushButton::clicked, this, [this]() {
+        for (int i = postListWidget->count() - 1; i >= 0; --i) {
+            QListWidgetItem* item = postListWidget->item(i);
+            if (item->checkState() == Qt::Checked) {
+                delete postListWidget->takeItem(i);  // 리스트에서 제거 + 메모리 해제
+            }
+        }
+    });
+
+    postListWidget->setStyleSheet(R"(
+    QListWidget::item {
+        font-size: 14px;
+        padding: 5px;
+    }
+)");
+
+
+
+    /*
+    connect(deleteWriting, &QPushButton::clicked, [=, this]() {
+        for (int i = postListWidget->count() - 1; i >= 0; --i) {
+            QListWidgetItem* item = postListWidget->item(i);
+            if (item->checkState() == Qt::Checked) {
+                QString writerId = item->data(Qt::UserRole + 1).toString();
+                if (writerId == currentUserId) {
+                    delete postListWidget->takeItem(i); // 삭제
+                } else {
+                    QMessageBox::warning(this, "삭제 권한 없음", "해당 글은 본인 글이 아닙니다.");
+                }
+            }
+        }
+    });
+*/
 /*
         // 올리기 버튼 클릭 시 동작
         connect(submitBtn, &QPushButton::clicked, [&]() {
