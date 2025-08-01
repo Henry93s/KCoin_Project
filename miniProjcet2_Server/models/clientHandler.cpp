@@ -224,12 +224,17 @@ void ClientHandler::readyRead_MessageSendRequest(const QJsonObject &obj)
     // geonwoo : 채팅 로그 테이블에 새 메시지 추가
     // 채팅 로그 테이블에 메시지 INSERT
     bool roomChatInsert_isSuccess;
-    QSqlQuery roomChatInsertQuery = emit requestQuery(\
-        QString("INSERT INTO %1 (message) VALUES ('%2')").arg(chatViewName, sendString), roomChatInsert_isSuccess);
+    // geonwoo : FIX: 채팅 메시지에 SQL 인젝션을 방지하기 위한 bind query 적용
+    // cf. SQL 인젝션 : 사용자가 입력한 값이 SQL 쿼리 문자열에 그대로 삽입되어 악의적인 쿼리가 실행되는 공격
+    QSqlQuery query;
+    QString sqlText = QString("INSERT INTO %1 (message) VALUES (?)").arg(chatViewName);
+    query.prepare(sqlText);
+    query.addBindValue(sendString);
+    QSqlQuery roomChatInsertQuery = emit requestBindQuery(query, roomChatInsert_isSuccess);
     if(roomChatInsert_isSuccess){
         qDebug() << chatViewName << " 에 message 삽입 추가 완료";
     } else {
-        qDebug() << chatViewName << " 에 message 삽입 실패";
+        qDebug() << chatViewName << " 에 message 삽입 실패  " << roomChatInsertQuery.lastError().text();
     }
 }
 
@@ -306,22 +311,6 @@ void ClientHandler::readyRead_FileSend(const QJsonObject &obj)
         qDebug() << "chatFiles 파일 메타데이터 테이블 찾기 쿼리 동작 실패";
         return;
     }
-
-    // 새 파일 정보 객체 생성
-    QJsonObject fileRecord;
-    fileRecord["fileId"] = fileId;
-    fileRecord["fileName"] = fileName;
-    fileRecord["senderName"] = senderName;  // ← 전송자 이름 저장
-    fileRecord["senderID"] = senderID;
-    fileRecord["originalPath"] = originalPath;
-    fileRecord["serverPath"] = serverFilePath;  // ← 서버 저장 경로 추가
-    fileRecord["fileSize"] = fileSize;
-    fileRecord["fileExtension"] = fileExtension;
-    fileRecord["mimeType"] = mimeType;
-    fileRecord["chatViewName"] = chatViewName;
-    fileRecord["timestamp"] = timestamp;
-    fileRecord["checksum"] = checksum;
-    fileRecord["uploadTime"] = QDateTime::currentDateTime().toString(Qt::ISODate);
 
     // 이전 : 배열에 추가
     // 이후 : geonwoo : 파일 메타데이터 테이블에 추가
