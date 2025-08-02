@@ -536,9 +536,9 @@ void HomeView::setupUI()
             if (!title.isEmpty()) {
                 // TODO: 서버 또는 DB 저장 로직 여기에
                 // 리스트 최상단에 글 제목 추가
-/*
-                int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
 
+                int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
+/*
                 // 🔸 제목 포맷: [번호] 제목 (userID)
                 QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
 
