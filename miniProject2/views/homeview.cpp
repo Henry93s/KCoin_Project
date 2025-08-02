@@ -439,6 +439,7 @@ void HomeView::setupUI()
     
     tapwidget->addTab(tab_2, "계좌");
 
+    //hyungoo
     // 게시판 탭 - tab_5
     QWidget *tab_5 = new QWidget();
     QVBoxLayout *mainLayout = new QVBoxLayout(tab_5);

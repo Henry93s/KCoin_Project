@@ -10,6 +10,7 @@
 #include <QSqlQuery>
 
 #include "usermanage.h"
+#include "../DBCore/postManager.h"
 
 class QJsonObject;
 
@@ -33,6 +34,7 @@ signals:
 
 public:
     userManage* GetUserMange() { return usermanage;}
+    PostManager* GetPostManager() {return postmanager;}
 private:
     void readyRead_LoginRequest(const QJsonObject& obj);
     void readyRead_SignRequest(const QJsonObject& obj);
@@ -49,6 +51,7 @@ private:
     qintptr socketDescriptor;
     QByteArray readBuffer;
     userManage* usermanage;
+    PostManager* postmanager;
     
     // 이메일 인증 관련 클라이언트별 변수들
     QString pendingEmail;        // 현재 인증 진행 중인 이메일

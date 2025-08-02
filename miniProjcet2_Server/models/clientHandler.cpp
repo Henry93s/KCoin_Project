@@ -16,6 +16,7 @@
 ClientHandler::ClientHandler(QTcpSocket *socket, QObject *parent)
     : QObject(parent), socket(socket) {
     usermanage = new userManage(this);
+    postmanager = this->postmanager->instance();
     connect(socket, &QTcpSocket::disconnected, this, &ClientHandler::onDisconnected);
 }
 

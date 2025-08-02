@@ -4,12 +4,23 @@
 #include <QString>
 #include <QDateTime>
 
-struct Post {
-    int id;
+class Post {
+public:
+    int getPostID();
+    QString getUserID();
+    QString getTitle();
+    QString getContents();
+
+    void setPostID(int postID);
+    void setUserID(const QString& userID);
+    void setTitle(const QString& title);
+    void setContents(const QString& contents);
+
+private:
+    int postID;
+    QString userID;
     QString title;
-    QString content;
-    QString author;
-    QDateTime createdAt;
+    QString contents;
 };
 
 #endif // POST_H

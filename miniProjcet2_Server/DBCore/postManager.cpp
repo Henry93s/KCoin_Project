@@ -1,8 +1,9 @@
 #include "postmanager.h"
-// #include <QSqlDatabase>
-// #include <QSqlQuery>
-// #include <QSqlError>
-// #include <QDebug>
+#include "post.h"
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
+#include <QDebug>
 
 PostManager* PostManager::m_instance = nullptr;
 
@@ -19,60 +20,121 @@ PostManager::PostManager() {
 }
 
 // 게시글 전체 가져오기
-QVector<Post> PostManager::getAllPosts() {
-    QVector<Post> posts;
+void PostManager::getAllPosts() {
 
-    // 아래는 DB 기능 주석 처리된 부분
-    /*
-    QSqlQuery query("SELECT id, title, content, author, created_at FROM posts ORDER BY created_at DESC");
+    bool isSuccess;
+    QSqlQuery query = emit requestQuery(QString("SELECT postID, userID, title, contents FROM coin.`Post`"), isSuccess);
+    if(!isSuccess){
+        qDebug() << query.lastError().text();
+    }
+
     while (query.next()) {
         Post post;
-        post.id = query.value(0).toInt();
-        post.title = query.value(1).toString();
-        post.content = query.value(2).toString();
-        post.author = query.value(3).toString();
-        post.createdAt = query.value(4).toDateTime();
+        post.setPostID(query.value(0).toInt());
+        post.setUserID(query.value(1).toString());
+        post.setTitle(query.value(2).toString());
+        post.setContents(query.value(3).toString());
         posts.append(post);
     }
-    */
 
-    return posts;
+    return;
 }
 
 // 게시글 추가
-bool PostManager::addPost(const QString& title, const QString& content, const QString& author) {
-    // DB 기능 비활성화
-    /*
-    QSqlQuery query;
-    query.prepare("INSERT INTO posts (title, content, author) VALUES (?, ?, ?)");
-    query.addBindValue(title);
-    query.addBindValue(content);
-    query.addBindValue(author);
-    return query.exec();
-    */
+bool PostManager::addPost(const QString& title, const QString& contents, const QString& userID) {
+    bool isSuccess;
 
-    return true; // 임시로 성공 반환
+    QString sql = QString("INSERT INTO coin.Post (userID, title, contents) "
+                          "VALUES ('%1', '%2', '%3')")
+                      .arg(userID, title, contents);
+
+    QSqlQuery query = emit requestQuery(sql, isSuccess);
+    if (!isSuccess) {
+        qDebug() << "[addPost] Insert failed:" << query.lastError().text();
+        return false;
+    }
+
+    // INSERT 후 최신 게시글 목록 다시 불러오기
+    getAllPosts();
+
+    return true;
 }
 
 // 게시글 삭제 (작성자 확인 포함)
-bool PostManager::deletePost(int postId, const QString& currentUserId) {
-    // DB 기능 비활성화
-    /*
-    QSqlQuery checkQuery;
-    checkQuery.prepare("SELECT author FROM posts WHERE id = ?");
-    checkQuery.addBindValue(postId);
-    if (!checkQuery.exec() || !checkQuery.next())
+bool PostManager::deletePost(int postID, const QString& currentUserID) {
+    bool isSuccess;
+
+    // 1. 작성자 확인
+    QString checkSql = QString("SELECT userID FROM coin.Post WHERE postID = %1").arg(postID);
+    QSqlQuery checkQuery = emit requestQuery(checkSql, isSuccess);
+
+    if (!isSuccess || !checkQuery.next()) {
+        qDebug() << "[deletePost] Post not found or DB error:" << checkQuery.lastError().text();
         return false;
+    }
 
-    if (checkQuery.value(0).toString() != currentUserId)
-        return false; // 본인 확인 실패
+    QString postUserID = checkQuery.value(0).toString();
+    if (postUserID != currentUserID) {
+        qDebug() << "[deletePost] 작성자 불일치. 삭제 불가.";
+        return false;
+    }
 
-    QSqlQuery query;
-    query.prepare("DELETE FROM posts WHERE id = ?");
-    query.addBindValue(postId);
-    return query.exec();
-    */
+    // 2. 삭제 쿼리
+    QString deleteSql = QString("DELETE FROM coin.Post WHERE postID = %1").arg(postID);
+    QSqlQuery deleteQuery = emit requestQuery(deleteSql, isSuccess);
 
-    return true; // 임시로 성공 반환
+    if (!isSuccess) {
+        qDebug() << "[deletePost] Delete failed:" << deleteQuery.lastError().text();
+        return false;
+    }
+
+    // QVector<Post>에서도 제거
+    for (int i = 0; i < posts.size(); ++i) {
+        if (posts[i].getPostID() == postID) {
+            posts.remove(i);
+            break;
+        }
+    }
+
+    return true;
 }
 
+/*
+bool PostManager::deletePost(int postID, const QString& currentUserID) {
+    // 게시글 작성자 확인
+    QSqlQuery checkQuery;
+    checkQuery.prepare("SELECT userID FROM coin.Post WHERE postID = ?");
+    checkQuery.addBindValue(postID);
+
+    if (!checkQuery.exec() || !checkQuery.next()) {
+        qDebug() << "[deletePost] Post not found or DB error:" << checkQuery.lastError().text();
+        return false;
+    }
+
+    QString postUserID = checkQuery.value(0).toString();
+    if (postUserID != currentUserID) {
+        qDebug() << "[deletePost] 작성자 불일치. 삭제 불가.";
+        return false;
+    }
+
+    // 삭제 실행
+    QSqlQuery deleteQuery;
+    deleteQuery.prepare("DELETE FROM coin.Post WHERE postID = ?");
+    deleteQuery.addBindValue(postID);
+
+    if (!deleteQuery.exec()) {
+        qDebug() << "[deletePost] Delete failed:" << deleteQuery.lastError().text();
+        return false;
+    }
+
+    // QVector<Post>에서도 제거
+    for (int i = 0; i < posts.size(); ++i) {
+        if (posts[i].getPostID() == postID) {
+            posts.remove(i);
+            break;
+        }
+    }
+
+    return true;
+}
+*/
