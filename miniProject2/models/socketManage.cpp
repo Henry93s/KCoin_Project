@@ -90,6 +90,12 @@ void SocketManage::onSocketReadyRead() {
             qDebug() << "이메일 인증 실패";
             QMessageBox::warning(nullptr, "인증 코드 불일치", "인증 번호를 다시 확인해주세요.");
         }
+        else if (type == "postRead"){
+
+        }
+        else if (type == "postAllRead"){
+            emit allPostsReceived(obj);
+        }
         else {
             qDebug() << "SocketManage: 알 수 없는 메시지 타입:" << type;
         }

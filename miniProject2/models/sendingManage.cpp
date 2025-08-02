@@ -206,14 +206,30 @@ void sendingManage::sendPostWrite(const QString& title, const QString& contents)
 
 // geonwoo
 // 게시판 전체 글 read 요청 전달
-void sendingManage::sendPostAllRead(){
+void sendingManage::sendPostAllRead()
+{
+    QTcpSocket* socket = SocketManage::instance().socket();
+    QJsonObject sendingObj;
+    sendingObj["type"] = "postAllRead";
 
+    QJsonDocument doc(sendingObj);
+    QByteArray sendingArray(doc.toJson(QJsonDocument::Compact));
+    sendingArray.append('\n');
+    socket->write(sendingArray);
 }
 
 // geonwoo
 // 게시판 특정 글 read 요청 전달
 void sendingManage::sendPostRead(const int& postID){
+    QTcpSocket* socket = SocketManage::instance().socket();
+    QJsonObject sendingObj;
+    sendingObj["type"] = "postRead";
+    sendingObj["ID"] = postID;
 
+    QJsonDocument doc(sendingObj);
+    QByteArray sendingArray(doc.toJson(QJsonDocument::Compact));
+    sendingArray.append('\n');
+    socket->write(sendingArray);
 }
 
 // geonwoo

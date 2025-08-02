@@ -114,7 +114,7 @@ void ClientHandler::onReadyRead() {
             }
             // 글 read
             else if (type == "postRead"){
-
+                readyRead_sendPostRead(obj);
             }
             // 글 delete
             else if (type == "postDelete"){
@@ -122,7 +122,7 @@ void ClientHandler::onReadyRead() {
             }
             // 글 all read
             else if (type == "postAllRead"){
-
+                readyRead_sendPostAllRead(obj);
             }
 
         }
@@ -868,11 +868,61 @@ void ClientHandler::readyRead_sendPostWrite(const QJsonObject &obj){
 
 }
 void ClientHandler::readyRead_sendPostRead(const QJsonObject &obj){
+    QString IDString = obj["ID"].toString();
+    QJsonObject resp;
 
-}
-void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj){
+    resp["type"] = "postRead";
 
+    QJsonArray postArray;
+
+    bool isSuccess;
+    auto query = emit requestQuery(QString("SELECT postID, userID, title, contents FROM coin.Post WHERE postID = %1;").arg(IDString), isSuccess);
+    if(!isSuccess){
+        qDebug() << "Failed to query sendPostAllRead";
+    }
+    QJsonObject post;
+    post["userID"] = query.value(1).toString();
+    post["title"] = query.value(2).toString();
+    post["contents"] = query.value(3).toString();
+    resp["post"] = post;
+
+    QJsonDocument respDoc(resp);
+    QByteArray respData = respDoc.toJson(QJsonDocument::Compact);
+    respData.append('\n');
+    socket->write(respData);
+    qDebug() << "포스트 송출 성공";
 }
-void ClientHandler::readyRead_sendPostDelete(const QJsonObject &obj){
+void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj)
+{
+    QJsonObject resp;
+
+    resp["type"] = "postAllRead";
+
+    QJsonArray postArray;
+
+    bool isSuccess;
+    auto query = emit requestQuery(QString("SELECT postID, userID, title, contents FROM coin.Post;"), isSuccess);
+    if(!isSuccess){
+        qDebug() << "Failed to query sendPostAllRead";
+    }
+    while(query.next()){
+        QJsonObject perPost;
+        perPost["postID"] = query.value(0).toString();
+        perPost["userID"] = query.value(1).toString();
+        perPost["title"] = query.value(2).toString();
+        perPost["contents"] = query.value(3).toString();
+        postArray.append(perPost);
+    }
+
+    resp["posts"] = postArray;
+
+    QJsonDocument respDoc(resp);
+    QByteArray respData = respDoc.toJson(QJsonDocument::Compact);
+    respData.append('\n');
+    socket->write(respData);
+    qDebug() << "포스트 전체 송출 성공";
+}
+void ClientHandler::readyRead_sendPostDelete(const QJsonObject &obj)
+{
 
 }

@@ -51,6 +51,9 @@ HomeView::HomeView(QWidget *parent)
     // geonwoo
     update_price = chartBox->getLineChart()->getLatestPrice();
     set_update_price(update_price);
+
+    // kimsungwon
+    sendingManage::instance()->sendPostAllRead();
 }
 
 // 특정 이벤트 필터 ( 전체적인 widget의 override임
@@ -505,6 +508,34 @@ void HomeView::setupUI()
 )");
     mainLayout->addWidget(postListWidget, 8);  // 기존 8/10 비율 유지
 */
+    // kimsungwon
+    connect(&SocketManage::instance(), &SocketManage::allPostsReceived, this, [&](const QJsonObject& obj) {
+        const auto& posts = obj["posts"].toArray();
+        for(const auto& perPost : posts){
+            auto perPostObj = perPost.toObject();
+            QString postID = perPostObj["postID"].toString();
+            QString userID = perPostObj["userID"].toString();
+            QString title = perPostObj["title"].toString();
+            QString contents = perPostObj["contents"].toString();
+
+            if (!title.isEmpty()) {
+                // TODO: 서버 또는 DB 저장 로직 여기에
+                // 글 작성 요청 전달
+                sendingManage::instance()->sendPostWrite(title, contents);
+
+                // 리스트 최상단에 글 제목 추가
+                QListWidgetItem* item = new QListWidgetItem(title);
+                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                item->setCheckState(Qt::Unchecked);
+                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+                item->setData(Qt::UserRole, contents);  // 본문 저장
+                // item->setData(Qt::UserRole + 1, currentUserId);
+
+                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+            }
+        }
+    });
     // QString currentUserId = "jhn00162";
     connect(uploadWriting, &QPushButton::clicked, [this]() {
         QDialog dialog(this);
