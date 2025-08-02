@@ -556,8 +556,9 @@ void HomeView::setupUI()
 )");
     mainLayout->addWidget(postListWidget, 8);  // 기존 8/10 비율 유지
 */
-    // kimsungwon
+    // kimsungwon 모두를 읽는다.
     connect(&SocketManage::instance(), &SocketManage::allPostsReceived, this, [&](const QJsonObject& obj) {
+        postListWidget->clear();
         const auto& posts = obj["posts"].toArray();
         for(const auto& perPost : posts){
             auto perPostObj = perPost.toObject();
