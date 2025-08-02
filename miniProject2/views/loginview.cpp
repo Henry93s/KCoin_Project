@@ -29,8 +29,8 @@ void LoginView::setupSocketConnection()
         // 192.168.2.235 => devwooms
         // 192.168.1.44 => donjizzkan
         // 192.168.2.207 => hyungoo
+        // 192.168.2.89 => kimsungwon
         socket->connectToHost("192.168.2.207", 51234);
-        // socket->connectToHost("192.168.2.26", 51234);
         // 192.168.2.190 => geonwoo
 
         // 서버 연결 완료 시그널은 SocketManage에서 처리하므로 여기서 직접 연결할

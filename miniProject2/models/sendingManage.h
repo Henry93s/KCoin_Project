@@ -47,6 +47,21 @@ public:
     // 이메일 코드 확인
     void sendCodeEmailCheck(QString code);
 
+    // geonwoo
+    // 게시판 글 write 요청 전달
+    void sendPostWrite(const QString& title, const QString& contents);
+
+    // geonwoo
+    // 게시판 전체 글 read 요청 전달
+    void sendPostAllRead();
+
+    // geonwoo
+    // 게시판 특정 글 read 요청 전달
+    void sendPostRead(const int& postID);
+
+    // geonwoo
+    // 게시판 특정 글 delete 요청 전달
+    void sendPostDelete(const int& postID);
 
 
     static sendingManage* m_instance;
@@ -55,6 +70,7 @@ public:
     // geonwoo
     // 전송자 ID
     void setSenderID(const QString& ID);
+    QString getSenderID();
 
 private:
     QString senderName;

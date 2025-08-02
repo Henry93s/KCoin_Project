@@ -108,6 +108,22 @@ void ClientHandler::onReadyRead() {
             else if (type == "emailcodecheck"){
                 readyRead_Emailcodecheck(obj);
             }
+            // 게시판 글 write 처리
+            else if (type == "postWrite"){
+
+            }
+            // 글 read
+            else if (type == "postRead"){
+
+            }
+            // 글 delete
+            else if (type == "postDelete"){
+
+            }
+            // 글 all read
+            else if (type == "postAllRead"){
+
+            }
 
         }
     }
@@ -847,3 +863,16 @@ void ClientHandler::readyRead_Emailcodecheck(const QJsonObject &obj)
     }
 }
 
+
+void ClientHandler::readyRead_sendPostWrite(const QJsonObject &obj){
+
+}
+void ClientHandler::readyRead_sendPostRead(const QJsonObject &obj){
+
+}
+void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj){
+
+}
+void ClientHandler::readyRead_sendPostDelete(const QJsonObject &obj){
+
+}
