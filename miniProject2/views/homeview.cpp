@@ -535,6 +535,8 @@ void HomeView::setupUI()
 
             if (!title.isEmpty()) {
                 // TODO: 서버 또는 DB 저장 로직 여기에
+                // 글 작성 요청 전달
+                sendingManage::instance()->sendPostWrite(title, content);
 
                 // 리스트 최상단에 글 제목 추가
                 QListWidgetItem* item = new QListWidgetItem(title);
