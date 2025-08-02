@@ -502,16 +502,7 @@ void ClientHandler::readyRead_GiveLog(const QJsonObject &obj)
 
 void ClientHandler::readyRead_Trade(const QJsonObject &obj)
 {
-    QString userInfoPath = usermanage->getDBPath();
-    QFile file(userInfoPath);
-    if(!file.open(QIODevice::ReadOnly)){
-        qDebug()<<"거래 신호 수신, 유저 정보 읽기 실패";
-        return;
-    }
-    QByteArray data = file.readAll();
-    file.close();
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    QJsonArray userList = doc.array();
+
 
     QString action = obj.value("action").toString();
     QString coin = obj.value("coin").toString();
@@ -522,72 +513,104 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
     bool updated = false;
     QJsonObject resultObj; // 응답용
 
-    for(int i = 0; i < userList.size(); ++i){
-        QJsonObject userObj = userList[i].toObject();
-        if(userObj["name"].toString() == senderName){
-            QJsonObject coins = userObj["coins"].toObject();
-            double money = userObj["money"].toDouble();
-            double payment = userObj["payment"].toDouble();
+    bool isSuccess;
+    QSqlQuery query = emit requestQuery(QString("SELECT ID, password, money, name, payment, phoneNum FROM coin.`User`"), isSuccess);
+    if(!isSuccess){
+        qDebug() << query.lastError();
+    }
 
-            int currentCoinCnt = coins.value(coin).toInt();
+    while (query.next()) {
+        QString listID = query.value(0).toString();
+        QString listPWD = query.value(1).toString();
+        double listMoney = query.value(2).toDouble();
+        QString listName = query.value(3).toString();
+        double listPayment = query.value(4).toDouble();
 
+        if(listName == senderName){
+            bool isSuccess;
+            QSqlQuery coin_userHasQuery = emit requestQuery(QString("SELECT CoinID, amount FROM Coin_UserHas WHERE UserID = '%1'").arg(listID), isSuccess);
+            if(!isSuccess){
+                qDebug() << coin_userHasQuery.lastError();
+            }
+
+            double totalCost = price * amount;
+
+            QString coinID;
+            int currentCoinCnt;
+            int afterCoinCnt;
+            bool thereIsNoCoin = true;
+            while(coin_userHasQuery.next()){
+                if(coin_userHasQuery.value(0).toString() == coin) {
+                    coinID = coin_userHasQuery.value(0).toString();
+                    currentCoinCnt = coin_userHasQuery.value(1).toInt();
+                    afterCoinCnt = currentCoinCnt;
+                    thereIsNoCoin = false;
+                    break;
+                }
+            }
             // 신규 코인 거래 대응
-            if(!coins.contains(coin))
-                coins[coin] = 0;
+            if(thereIsNoCoin){
+                bool isSuccess_noCoin;
+                QSqlQuery coin_newCoinQuery = emit requestQuery(QString("INSERT INTO coin.Coin_UserHas(CoinID, UserID, amount) VALUES('%1', '%2', 0);").arg(coin).arg(listID), isSuccess_noCoin);
+                if(!isSuccess_noCoin){
+                    qDebug() << coin_newCoinQuery.lastError();
+                }
+                else{
+                    coinID = coin;
+                    currentCoinCnt = 0;
+                    afterCoinCnt = currentCoinCnt;
+                }
+            }
 
             if(action == "buy"){
-                double totalCost = price * amount;
-                if(money >= totalCost){
-                    money -= totalCost;
-                    payment += totalCost;
-                    coins[coin] = currentCoinCnt + amount;
-                    userObj["money"] = money;
-                    userObj["coins"] = coins;
-                    userObj["payment"] = payment;
+                if(listMoney >= totalCost){
+                    listMoney -= totalCost;
+                    listPayment += totalCost;
+                    afterCoinCnt += amount;
                     updated = true;
-                    qDebug()<<"매수 성공";
-                } else {
-                    qDebug()<<"매수 실패: 잔액 부족";
+                    qDebug() << "매수 성공";
+                } else{
+                    qDebug() << "매수 실패: 잔액 부족";
                 }
             }
             else if(action == "sell"){
                 if(currentCoinCnt >= amount){
-                    money += price * amount;
-                    payment -= price * amount;
-                    coins[coin] = currentCoinCnt - amount;
-                    userObj["money"] = money;
-                    userObj["coins"] = coins;
-                    userObj["payment"] = payment;
+                    listMoney += totalCost;
+                    listPayment -= totalCost;
+                    afterCoinCnt -= amount;
                     updated = true;
-                    qDebug()<<"매도 성공";
-                } else {
-                    qDebug()<<"매도 실패: 코인 부족";
+                    qDebug() << "매도 성동";
+                }
+                else{
+                    qDebug() << "매도 실패: 코인 부족";
                 }
             }
 
-            // 거래내역 기록
-            QJsonArray tradingHis = userObj["tradingHis"].toArray();
-            QJsonObject record;
-            record["action"] = action;
-            record["coin"] = coin;
-            record["price"] = price;
-            record["amount"] = amount;
-            record["datetime"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-            tradingHis.append(record);
-            userObj["tradingHis"] = tradingHis;
+            // User's Trading INSERT
+            bool isSuccess_trading;
+            QSqlQuery tradingOfUserHasQuery = emit requestQuery(QString("INSERT INTO coin.tradingOfUser(traderID, `action`, amount, coinID, tradedTime, price) VALUES('%1', '%2', %3, '%4', '%5', %6);").arg(listID).arg(action).arg(amount).arg(coinID).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")).arg(price), isSuccess_trading);
+            if(!isSuccess_trading){
+                qDebug() << "trading INSERT Query Fail!";
+                qDebug() << tradingOfUserHasQuery.lastError();
+            }
 
-            userList[i] = userObj;
-            resultObj = userObj; // 응답으로 현재 유저정보를 그대로 내려주고 싶다면
+            // Coin_UserHas Update
+            bool isSuccess_CoinUserHas;
+            QSqlQuery CoinUserHasQuery = emit requestQuery(QString("UPDATE coin.Coin_UserHas SET amount=%1 WHERE CoinID='%2' AND UserID='%3';").arg(afterCoinCnt).arg(coinID).arg(listID), isSuccess_CoinUserHas);
+            if(!isSuccess_CoinUserHas){
+                qDebug() << "Coin User Has INSERT Query Fail!";
+                qDebug() << CoinUserHasQuery.lastError();
+            }
+
+            // User update
+            bool isSuccess_UserUpdate;
+            QSqlQuery userQuery = emit requestQuery(QString("UPDATE coin.`User` SET money=%1, payment=%2 WHERE ID='%3';").arg(listMoney).arg(listPayment).arg(listID), isSuccess_UserUpdate);
+            if(!isSuccess_UserUpdate){
+                qDebug() << "User Update Query Fail!";
+                qDebug() << userQuery.lastError();
+            }
+
             break;
-        }
-    }
-
-    // 변경 사항 저장
-    if(updated){
-        if(file.open(QIODevice::WriteOnly)){
-            QJsonDocument newDoc(userList);
-            file.write(newDoc.toJson());
-            file.close();
         }
     }
 
@@ -611,6 +634,118 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
     respData.append('\n');
     socket->write(respData);
     qDebug() << "거래 응답 전송";
+
+    return;
+
+    // QString userInfoPath = usermanage->getDBPath();
+    // QFile file(userInfoPath);
+    // if(!file.open(QIODevice::ReadOnly)){
+    //     qDebug()<<"거래 신호 수신, 유저 정보 읽기 실패";
+    //     return;
+    // }
+    // QByteArray data = file.readAll();
+    // file.close();
+    // QJsonDocument doc = QJsonDocument::fromJson(data);
+    // QJsonArray userList = doc.array();
+
+    // QString action = obj.value("action").toString();
+    // QString coin = obj.value("coin").toString();
+    // double price = obj.value("price").toDouble();
+    // int amount = obj.value("amount").toInt();
+    // QString senderName = obj.value("senderName").toString();
+
+    // bool updated = false;
+    // QJsonObject resultObj; // 응답용
+
+    // for(int i = 0; i < userList.size(); ++i){
+    //     QJsonObject userObj = userList[i].toObject();
+    //     if(userObj["name"].toString() == senderName){
+    //         QJsonObject coins = userObj["coins"].toObject();
+    //         double money = userObj["money"].toDouble();
+    //         double payment = userObj["payment"].toDouble();
+
+    //         int currentCoinCnt = coins.value(coin).toInt();
+
+    //         // 신규 코인 거래 대응
+    //         if(!coins.contains(coin))
+    //             coins[coin] = 0;
+
+    //         if(action == "buy"){
+    //             double totalCost = price * amount;
+    //             if(money >= totalCost){
+    //                 money -= totalCost;
+    //                 payment += totalCost;
+    //                 coins[coin] = currentCoinCnt + amount;
+    //                 userObj["money"] = money;
+    //                 userObj["coins"] = coins;
+    //                 userObj["payment"] = payment;
+    //                 updated = true;
+    //                 qDebug()<<"매수 성공";
+    //             } else {
+    //                 qDebug()<<"매수 실패: 잔액 부족";
+    //             }
+    //         }
+    //         else if(action == "sell"){
+    //             if(currentCoinCnt >= amount){
+    //                 money += price * amount;
+    //                 payment -= price * amount;
+    //                 coins[coin] = currentCoinCnt - amount;
+    //                 userObj["money"] = money;
+    //                 userObj["coins"] = coins;
+    //                 userObj["payment"] = payment;
+    //                 updated = true;
+    //                 qDebug()<<"매도 성공";
+    //             } else {
+    //                 qDebug()<<"매도 실패: 코인 부족";
+    //             }
+    //         }
+
+    //         // 거래내역 기록
+    //         QJsonArray tradingHis = userObj["tradingHis"].toArray();
+    //         QJsonObject record;
+    //         record["action"] = action;
+    //         record["coin"] = coin;
+    //         record["price"] = price;
+    //         record["amount"] = amount;
+    //         record["datetime"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    //         tradingHis.append(record);
+    //         userObj["tradingHis"] = tradingHis;
+
+    //         userList[i] = userObj;
+    //         resultObj = userObj; // 응답으로 현재 유저정보를 그대로 내려주고 싶다면
+    //         break;
+    //     }
+    // }
+
+    // // 변경 사항 저장
+    // if(updated){
+    //     if(file.open(QIODevice::WriteOnly)){
+    //         QJsonDocument newDoc(userList);
+    //         file.write(newDoc.toJson());
+    //         file.close();
+    //     }
+    // }
+
+    // // 거래 응답 전송
+    // QJsonObject resp;
+    // resp["type"] = "traderesponse";
+    // resp["result"] = updated ? "success" : "fail";
+    // resp["action"] = action;
+    // resp["coin"] = coin;
+    // resp["amount"] = amount;
+    // resp["history"] = resultObj["tradingHis"];
+
+    // // [수정된 부분] user 객체 통째로 넘기는 대신 핵심 정보만 직접 넘김
+    // resp["money"] = resultObj["money"];
+    // resp["payment"] = resultObj["payment"];
+    // resp["coins"] = resultObj["coins"];
+    // // resp["user"] = resultObj; // 이 라인은 이제 필요 없어!
+
+    // QJsonDocument respDoc(resp);
+    // QByteArray respData = respDoc.toJson(QJsonDocument::Compact);
+    // respData.append('\n');
+    // socket->write(respData);
+    // qDebug() << "거래 응답 전송";
 }
 
 void ClientHandler::readyRead_Report(const QJsonObject &obj)
