@@ -555,16 +555,12 @@ void HomeView::setupUI()
         const auto& posts = obj["posts"].toArray();
         for(const auto& perPost : posts){
             auto perPostObj = perPost.toObject();
-            QString postID = perPostObj["postID"].toString();
+            int postID = perPostObj["postID"].toInt();
             QString userID = perPostObj["userID"].toString();
             QString title = perPostObj["title"].toString();
             QString contents = perPostObj["contents"].toString();
 
             if (!title.isEmpty()) {
-                // TODO: 서버 또는 DB 저장 로직 여기에
-                // 글 작성 요청 전달
-                sendingManage::instance()->sendPostWrite(title, contents);
-
                 // 리스트 최상단에 글 제목 추가
                 QListWidgetItem* item = new QListWidgetItem(title);
                 item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -572,13 +568,14 @@ void HomeView::setupUI()
                 item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
 
                 item->setData(Qt::UserRole, contents);  // 본문 저장
-                // item->setData(Qt::UserRole + 1, currentUserId);
+                item->setData(Qt::UserRole + 1, userID);
+                item->setData(Qt::UserRole + 2, postID);
 
                 postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
             }
         }
     });
-    // QString currentUserId = "jhn00162";
+
     connect(uploadWriting, &QPushButton::clicked, [this]() {
         QDialog dialog(this);
         dialog.setWindowTitle("Welcome");
@@ -601,118 +598,12 @@ void HomeView::setupUI()
         QDialogButtonBox* buttonBox=new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         vbox->addWidget(buttonBox);
 
-        connect(buttonBox, &QDialogButtonBox::accepted, [&]() {
-            QString title = TitleEdit->text().trimmed();
-            QString content = mainWriting->toPlainText().trimmed();
-
-            if (!title.isEmpty()) {
-                QString currentUserId = "jhn00162";  // 로그인한 유저 ID
-                int newPostId = postListWidget->count() + 1;
-
-                // 서버로 글 작성 요청 전송
-                sendingManage::instance()->sendPostWrite(title, content);
-
-                // 리스트 항목 객체 생성
-                QListWidgetItem* item = new QListWidgetItem();
-                item->setSizeHint(QSize(0, 40));  // 행 높이 설정
-                item->setData(Qt::UserRole, content);
-                item->setData(Qt::UserRole + 1, currentUserId);
-
-                postListWidget->insertItem(0, item);  // 최신 글이 위로 오게
-
-                // 커스텀 위젯 생성
-                QWidget* customWidget = new QWidget();
-                QHBoxLayout* layout = new QHBoxLayout(customWidget);
-                layout->setContentsMargins(10, 0, 10, 0);
-                layout->setSpacing(10);
-
-                // postID 라벨 (체크박스 왼쪽에 붙일 수는 없음 → 생략 or 통합)
-                QLabel* idPrefix = new QLabel(QString("[%1]").arg(newPostId));
-                idPrefix->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-                layout->addWidget(idPrefix);
-
-                // 제목 라벨
-                QLabel* titleLabel = new QLabel(title);
-                titleLabel->setToolTip(title);
-                titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-                titleLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-                QFontMetrics fm(titleLabel->font());
-                QString elided = fm.elidedText(title, Qt::ElideRight, 250);
-                titleLabel->setText(elided);
-                layout->addWidget(titleLabel);
-
-                // userID 라벨
-                QLabel* userLabel = new QLabel(QString("(%1)").arg(currentUserId));
-                userLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
-                layout->addWidget(userLabel);
-
-                postListWidget->setItemWidget(item, customWidget);  // 위젯 설정
-            }
-
-            dialog.accept();
-        });
-
-
         // [확인] 버튼 처리
         connect(buttonBox, &QDialogButtonBox::accepted, [&]() {
             QString title = TitleEdit->text().trimmed();
             QString content = mainWriting->toPlainText().trimmed();
 
             if (!title.isEmpty()) {
-                // TODO: 서버 또는 DB 저장 로직 여기에
-                // 리스트 최상단에 글 제목 추가
-                // 최신 글이 위에 오므로, postListWidget의 현재 아이템 수에 1을 더해 postID로 사용
-                int newPostId = postListWidget->count() + 1;
-
-                QString currentUserId = "jhn00162";
-                // 🔹 [postID] 제목 (userID) 포맷
-                QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
-
-                sendingManage::instance()->sendPostWrite(title, content);
-
-                // QListWidgetItem 생성 및 설정
-                QListWidgetItem* item = new QListWidgetItem(formattedTitle);
-                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                item->setCheckState(Qt::Unchecked);
-                item->setSizeHint(QSize(0, 40));  // 높이 조절
-
-                // 본문 및 작성자 정보 저장
-                item->setData(Qt::UserRole, content);
-                item->setData(Qt::UserRole + 1, currentUserId);
-
-                // 최신 글이 위로 가게 맨 앞에 삽입
-                postListWidget->insertItem(0, item);
-
-
-                // int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
-
-                // // 🔸 제목 포맷: [번호] 제목 (userID)
-                // QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
-
-                // QListWidgetItem* item = new QListWidgetItem(formattedTitle);
-                // item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                // item->setCheckState(Qt::Unchecked);
-                // item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
-
-                // item->setData(Qt::UserRole, content);             // 본문 저장
-                // item->setData(Qt::UserRole + 1, currentUserId);   // userID 저장 (삭제 시 유용)
-
-                // postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
-
-                // 글 작성 요청 전달
-//                sendingManage::instance()->sendPostWrite(title, content);
-
-                // 리스트 최상단에 글 제목 추가
-                // QListWidgetItem* item = new QListWidgetItem(title);
-                // item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                // item->setCheckState(Qt::Unchecked);
-                // item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
-
-                // item->setData(Qt::UserRole, content);  // 본문 저장
-                // // item->setData(Qt::UserRole + 1, currentUserId);
-
-                // postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
-
                 // geonwoo : 글 작성 요청 전달
                 qDebug() << "homeview : 글 작성 요청 전달 진행";
                 sendingManage::instance()->sendPostWrite(title, content);
