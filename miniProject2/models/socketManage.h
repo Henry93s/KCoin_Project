@@ -33,6 +33,12 @@ signals:
     // 서버로부터 게시판 정보들 받음
     void allPostsReceived(const QJsonObject& obj);
     void searchPostReceived(const QJsonObject& obj);
+    // geonwoo
+    // 서버로부터 게시판 글 추가 처리 에 대한 응답 시그널
+    void postWriteReceived(const QJsonObject& obj);
+    // 서버로부터 게시판 글 삭제 처리 에 대한 응답 시그널
+    void postDeleteReceived(const QJsonObject& obj);
+
 private slots:
     // QTcpSocket의 readyRead 시그널을 받아서 모든 데이터를 처리할 슬롯
     void onSocketReadyRead();

@@ -59,17 +59,17 @@ HomeView::HomeView(QWidget *parent)
 // 특정 이벤트 필터 ( 전체적인 widget의 override임
 bool HomeView::eventFilter(QObject *obj, QEvent *event) {
     qDebug() << "eventFilter 호출 - obj:" << obj << "event type:" << event->type();
-    
+
     // obj가 lineEdit일 때
     if (obj == searchLineEdit) {
         qDebug() << "searchLineEdit 이벤트 감지";
-        
+
         if (event->type() == QEvent::FocusIn) {
             qDebug() << "Focus In - coinSearchWidget 보이기";
             coinSearchWidget->show();
             coinSearchWidget->raise(); // 위에 나타나도록
             return true;
-        } 
+        }
         else if (event->type() == QEvent::FocusOut) {
             qDebug() << "Focus Out - coinSearchWidget 숨기기";
             // 약간의 지연을 두어 다른 위젯이 포커스를 받을 수 있도록 함
@@ -99,7 +99,7 @@ bool HomeView::eventFilter(QObject *obj, QEvent *event) {
 
         }
     }
-    
+
     return QWidget::eventFilter(obj, event);
 }
 
@@ -152,24 +152,24 @@ void HomeView::connectSignal(){
             chartBox->getCandleChart()->candleDataManager->update();
         }
     });
-    
+
     // searchLineEdit 텍스트 변경시 CoinSearchWidget에 전달
     connect(searchLineEdit, &QLineEdit::textChanged, coinSearchWidget, &CoinSearchWidget::updateSearchText);
-    
+
     // CoinSearchWidget에서 코인 선택시 comboBox 업데이트
     connect(coinSearchWidget, &CoinSearchWidget::coinSelected, this, [this](const QString& symbol, const QString& koreanName, const QString& englishName) {
         qDebug() << "코인 선택됨 - 종목:" << symbol << "한국어명:" << koreanName << "영어명:" << englishName;
-        
+
         // comboBox에서 해당 코인 찾아서 선택
         QString targetText = QString("%1 / %2 / %3").arg(symbol, koreanName, englishName);
-        
+
         for (int i = 0; i < comboBox->count(); ++i) {
             if (comboBox->itemText(i) == targetText) {
                 comboBox->setCurrentIndex(i);
                 break;
             }
         }
-        
+
         // 검색 위젯 숨기기
         coinSearchWidget->hide();
         searchLineEdit->clearFocus();
@@ -227,6 +227,46 @@ void HomeView::connectSignal(){
                 gpio_Down_LED();
             }
         }
+    });
+
+    // geonwoo
+    // 게시판 글 추가 처리에 대한 응답 시그널에 대한 슬롯 (lambda)
+    connect(&SocketManage::instance(), &SocketManage::postWriteReceived, this, [this](const QJsonObject& response) {
+        qDebug() << "게시판 글 추가 처리에 대한 응답 받음 (slot)";
+
+        bool is_success = response.value("success").toBool();
+        if(is_success){
+            QString userID = response.value("userID").toString();
+            QString title = response.value("title").toString();
+            QString contents = response.value("contents").toString();
+            int postID = response.value("postID").toInt();
+
+            qDebug() << "userID : " << userID;
+            qDebug() << "title : " << title;
+            qDebug() << "contents : " << contents;
+            qDebug() << "postID : " << postID;
+            qDebug() << "로 글 작성 완료 됨 !!!";
+
+            addPostWidgetView(response);
+        } else {
+            qDebug() << "글 작성 실패함!!!";
+        }
+    });
+
+    // geonwoo
+    // 게시판 글 삭제 처리에 대한 응답 시그널에 대한 슬롯 (lambda)
+    connect(&SocketManage::instance(), &SocketManage::postDeleteReceived, this, [this](const QJsonObject& response) {
+        qDebug() << "게시판 글 삭제 처리에 대한 응답 받음 (slot)";
+
+        bool is_success = response.value("success").isBool();
+        if(is_success){
+            qDebug() << "선택한 글이 정상적으로 삭제되었습니다.";
+        } else {
+            qDebug() << response.value("reason").toString();
+        }
+
+        // 삭제 완료 시 UI 처리
+        // 전체 글 refresh 요청 api 호출
     });
 }
 
@@ -298,14 +338,14 @@ void HomeView::setupUI()
     // 메인 레이아웃
     QHBoxLayout *horizontalLayout_4 = new QHBoxLayout(this);
     horizontalLayout_4->setContentsMargins(5, 5, 5, 5);
-    
+
     // 스플리터
     splitter = new QSplitter(Qt::Horizontal);
-    
+
     // 왼쪽 탭 위젯
     tapwidget = new QTabWidget();
     tapwidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    
+
     // 시세 탭
     QWidget *tab = new QWidget();
     chartTab = new QVBoxLayout(tab);
@@ -335,7 +375,7 @@ void HomeView::setupUI()
     // 계좌 탭
     QWidget *tab_2 = new QWidget();
     QVBoxLayout *verticalLayout = new QVBoxLayout(tab_2);
-    
+
     // 상단 텍스트 브라우저
     textBrowser = new QTextBrowser();
     textBrowser->setHtml("<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
@@ -347,99 +387,99 @@ void HomeView::setupUI()
                          "</style></head><body style=\" font-family:'.AppleSystemUIFont'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
                          "<p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'맑은 고딕'; font-size:9pt;\">이름 / &lt;현재 보유중인 현금&gt;</span></p></body></html>");
     verticalLayout->addWidget(textBrowser);
-    
+
     // 그리드 레이아웃
     QGridLayout *gridLayout = new QGridLayout();
     gridLayout->setSpacing(0);
-    
+
     // 그리드 요소들 추가
     purchasePrice = new QTextBrowser();
     gridLayout->addWidget(purchasePrice, 0, 1, 1, 2);
-    
+
     QTextBrowser *textBrowser_8 = new QTextBrowser();
     textBrowser_8->setHtml("<p align=\"center\">수익률(%)</p>");
     gridLayout->addWidget(textBrowser_8, 1, 3);
-    
+
     QTextBrowser *textBrowser_6 = new QTextBrowser();
     textBrowser_6->setHtml("<p align=\"center\">평가손익</p>");
     gridLayout->addWidget(textBrowser_6, 0, 3);
-    
+
     QTextBrowser *textBrowser_4 = new QTextBrowser();
     textBrowser_4->setHtml("<p align=\"center\">평가금액</p>");
     gridLayout->addWidget(textBrowser_4, 1, 0, 1, 2);
-    
+
     gainPercent = new QTextBrowser();
     gridLayout->addWidget(gainPercent, 1, 4);
-    
+
     gain = new QTextBrowser();
     gridLayout->addWidget(gain, 0, 4);
-    
+
     QTextBrowser *textBrowser_3 = new QTextBrowser();
     textBrowser_3->setHtml("<p align=\"center\">매입금액</p>");
     gridLayout->addWidget(textBrowser_3, 0, 0);
-    
+
     recentPrice = new QTextBrowser();
     gridLayout->addWidget(recentPrice, 1, 2);
-    
+
     verticalLayout->addLayout(gridLayout);
-    
+
     // 구분선
     QFrame *line = new QFrame();
     line->setFrameShape(QFrame::HLine);
     verticalLayout->addWidget(line);
-    
+
     // 거래내역 제목
     QTextBrowser *textBrowser_23 = new QTextBrowser();
     textBrowser_23->setHtml("<p align=\"center\">거래내역</p>");
     verticalLayout->addWidget(textBrowser_23);
-    
+
     // 거래내역 헤더
     QHBoxLayout *horizontalLayout = new QHBoxLayout();
     horizontalLayout->setSpacing(0);
-    
+
     QTextBrowser *textBrowser_14 = new QTextBrowser();
     textBrowser_14->setHtml("<p align=\"center\">주문정보</p>");
     horizontalLayout->addWidget(textBrowser_14);
-    
+
     QTextBrowser *textBrowser_10 = new QTextBrowser();
     textBrowser_10->setHtml("<p align=\"center\">거래일시</p>");
     horizontalLayout->addWidget(textBrowser_10);
-    
+
     QTextBrowser *textBrowser_11 = new QTextBrowser();
     textBrowser_11->setHtml("<p align=\"center\">거래수량</p>");
     horizontalLayout->addWidget(textBrowser_11);
-    
+
     QTextBrowser *textBrowser_12 = new QTextBrowser();
     textBrowser_12->setHtml("<p align=\"center\">거래액수</p>");
     horizontalLayout->addWidget(textBrowser_12);
-    
+
     QTextBrowser *textBrowser_13 = new QTextBrowser();
     textBrowser_13->setHtml("<p align=\"center\">총액수</p>");
     horizontalLayout->addWidget(textBrowser_13);
-    
+
     verticalLayout->addLayout(horizontalLayout);
-    
+
     // 거래내역 데이터
     QHBoxLayout *horizontalLayout_3 = new QHBoxLayout();
     horizontalLayout_3->setSpacing(0);
-    
+
     orderType = new QTextBrowser();
     horizontalLayout_3->addWidget(orderType);
-    
+
     orderDate = new QTextBrowser();
     horizontalLayout_3->addWidget(orderDate);
-    
+
     orderAmount = new QTextBrowser();
     horizontalLayout_3->addWidget(orderAmount);
-    
+
     orderPrice = new QTextBrowser();
     horizontalLayout_3->addWidget(orderPrice);
-    
+
     orderTotal = new QTextBrowser();
     horizontalLayout_3->addWidget(orderTotal);
-    
+
     verticalLayout->addLayout(horizontalLayout_3);
-    
+
     tapwidget->addTab(tab_2, "계좌");
 
     //hyungoo
@@ -510,7 +550,6 @@ void HomeView::setupUI()
 )");
     mainLayout->addWidget(postListWidget, 8);  // 기존 8/10 비율 유지
 */
-<<<<<<< HEAD
     // kimsungwon
     connect(&SocketManage::instance(), &SocketManage::allPostsReceived, this, [&](const QJsonObject& obj) {
         const auto& posts = obj["posts"].toArray();
@@ -540,9 +579,6 @@ void HomeView::setupUI()
         }
     });
     // QString currentUserId = "jhn00162";
-=======
-
->>>>>>> hyungoo
     connect(uploadWriting, &QPushButton::clicked, [this]() {
         QDialog dialog(this);
         dialog.setWindowTitle("Welcome");
@@ -616,7 +652,7 @@ void HomeView::setupUI()
             dialog.accept();
         });
 
-/*
+
         // [확인] 버튼 처리
         connect(buttonBox, &QDialogButtonBox::accepted, [&]() {
             QString title = TitleEdit->text().trimmed();
@@ -646,41 +682,46 @@ void HomeView::setupUI()
 
                 // 최신 글이 위로 가게 맨 앞에 삽입
                 postListWidget->insertItem(0, item);
-*/
-/*
-                int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
 
-                // 🔸 제목 포맷: [번호] 제목 (userID)
-                QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
 
-                QListWidgetItem* item = new QListWidgetItem(formattedTitle);
-                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                item->setCheckState(Qt::Unchecked);
-                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+                // int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
 
-                item->setData(Qt::UserRole, content);             // 본문 저장
-                item->setData(Qt::UserRole + 1, currentUserId);   // userID 저장 (삭제 시 유용)
+                // // 🔸 제목 포맷: [번호] 제목 (userID)
+                // QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
 
-                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
-*/
+                // QListWidgetItem* item = new QListWidgetItem(formattedTitle);
+                // item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                // item->setCheckState(Qt::Unchecked);
+                // item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+                // item->setData(Qt::UserRole, content);             // 본문 저장
+                // item->setData(Qt::UserRole + 1, currentUserId);   // userID 저장 (삭제 시 유용)
+
+                // postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+
                 // 글 작성 요청 전달
 //                sendingManage::instance()->sendPostWrite(title, content);
-/*
+
                 // 리스트 최상단에 글 제목 추가
-                QListWidgetItem* item = new QListWidgetItem(title);
-                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                item->setCheckState(Qt::Unchecked);
-                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+                // QListWidgetItem* item = new QListWidgetItem(title);
+                // item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                // item->setCheckState(Qt::Unchecked);
+                // item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
 
-                item->setData(Qt::UserRole, content);  // 본문 저장
-                // item->setData(Qt::UserRole + 1, currentUserId);
+                // item->setData(Qt::UserRole, content);  // 본문 저장
+                // // item->setData(Qt::UserRole + 1, currentUserId);
 
-                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+                // postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
 
+                // geonwoo : 글 작성 요청 전달
+                qDebug() << "homeview : 글 작성 요청 전달 진행";
+                sendingManage::instance()->sendPostWrite(title, content);
+                // 글 작성이 성공할 경우
+                // postWriteReceived 시그널에 의한 슬롯에서 처리하여 글을 추가한다.
             }
             dialog.accept();
         });
-*/
+
         // [취소] 버튼
         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
@@ -737,10 +778,16 @@ void HomeView::setupUI()
     });
 
     connect(deleteWriting, &QPushButton::clicked, this, [this]() {
-        for (int i = postListWidget->count() - 1; i >= 0; --i) {
+        // geonwoo
+        // 선택한 listwidget 의 post item 을 삭제하는 요청 전달 시작
+        for(auto i = postListWidget->count() - 1; i >= 0; --i){
             QListWidgetItem* item = postListWidget->item(i);
             if (item->checkState() == Qt::Checked) {
-                delete postListWidget->takeItem(i);  // 리스트에서 제거 + 메모리 해제
+                QString postUserID = item->data(Qt::UserRole + 1).toString();
+                int postID = item->data(Qt::UserRole + 2).toInt();
+
+                qDebug() << "homeview : 삭제하려는 글의 글작성자ID : " << postUserID << " 글 post id : " << postID;
+                sendingManage::instance()->sendPostDelete(postUserID, postID);
             }
         }
     });
@@ -788,28 +835,28 @@ void HomeView::setupUI()
 */
     // 탭 추가
     tapwidget->addTab(tab_5, "게시판");
-    
+
     splitter->addWidget(tapwidget);
-    
+
     // 오른쪽 탭 위젯
     QTabWidget *tabWidget = new QTabWidget();
-    
+
     // 매수/매도 탭
     QWidget *tab_3 = new QWidget();
     QWidget *layoutWidget = new QWidget(tab_3);
     layoutWidget->setGeometry(QRect(21, 13, 213, 427));
-    
+
     QVBoxLayout *verticalLayout_4 = new QVBoxLayout(layoutWidget);
-    
+
     // 여백
     QSpacerItem *verticalSpacer_2 = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
     verticalLayout_4->addItem(verticalSpacer_2);
-    
+
     // 현재 잔고
     QLabel *label = new QLabel("현재 잔고");
     label->setAlignment(Qt::AlignCenter);
     verticalLayout_4->addWidget(label);
-    
+
     // lineEdit = new QLineEdit();
     // lineEdit->setMinimumHeight(30);
     // lineEdit->setReadOnly(true);
@@ -819,30 +866,30 @@ void HomeView::setupUI()
     accountBrowser->setMaximumHeight(30);
     accountBrowser->setReadOnly(true);
     verticalLayout_4->addWidget(accountBrowser);
-    
+
     QSpacerItem *verticalSpacer_4 = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
     verticalLayout_4->addItem(verticalSpacer_4);
-    
+
     // 매수/매도 옵션
     QVBoxLayout *verticalLayout_3 = new QVBoxLayout();
-    
+
     radioButton = new QRadioButton("매수");
     radioButton->setMinimumHeight(30);
     QFont font;
     font.setPointSize(20);
     radioButton->setFont(font);
     verticalLayout_3->addWidget(radioButton);
-    
+
     spinBox = new QSpinBox();
     spinBox->setMinimumHeight(30);
     spinBox->setMaximum(99999);
     verticalLayout_3->addWidget(spinBox);
-    
+
     radioButton_2 = new QRadioButton("매도");
     radioButton_2->setMinimumHeight(30);
     radioButton_2->setFont(font);
     verticalLayout_3->addWidget(radioButton_2);
-    
+
     spinBox_2 = new QSpinBox();
     spinBox_2->setMinimumHeight(30);
     spinBox_2->setMaximum(99999);
@@ -870,38 +917,38 @@ void HomeView::setupUI()
 
 
     verticalLayout_4->addLayout(verticalLayout_3);
-    
+
     QSpacerItem *verticalSpacer_3 = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
     verticalLayout_4->addItem(verticalSpacer_3);
-    
+
     // 버튼 레이아웃
     QHBoxLayout *horizontalLayout_5 = new QHBoxLayout();
     QSpacerItem *horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalLayout_5->addItem(horizontalSpacer_2);
-    
+
     pushButton = new QPushButton("PushButton");
     pushButton->setMinimumHeight(50);
     horizontalLayout_5->addWidget(pushButton);
 
     QSpacerItem *horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalLayout_5->addItem(horizontalSpacer_3);
-    
+
     verticalLayout_4->addLayout(horizontalLayout_5);
-    
+
     QSpacerItem *verticalSpacer = new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding);
     verticalLayout_4->addItem(verticalSpacer);
-    
+
     tabWidget->addTab(tab_3, "매수 / 매도");
-    
+
     // 채팅 탭
     QWidget *tab_4 = new QWidget();
     QHBoxLayout *horizontalLayout_2 = new QHBoxLayout(tab_4);
-    
+
     chatting_ToolBox = new QToolBox();
     chatting_ToolBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     chatting_ToolBox->setMinimumWidth(200);
     chatting_ToolBox->setCurrentIndex(2);
-    
+
     // 접속자 목록
     QWidget *connect_list = new QWidget();
     connect_list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -961,7 +1008,7 @@ void HomeView::setupUI()
     connect_listWidget = new QListWidget();
     verticalLayout_2->addWidget(connect_listWidget);
     // chatting_ToolBox->addItem(connect_list, "접속자 목록");
-    
+
     // 개인 채팅방
     QWidget *oneByone_list = new QWidget();
     QVBoxLayout *verticalLayout_6 = new QVBoxLayout(oneByone_list);
@@ -969,7 +1016,7 @@ void HomeView::setupUI()
     oneByone_listWidget = new QListWidget();
     verticalLayout_6->addWidget(oneByone_listWidget);
     // chatting_ToolBox->addItem(oneByone_list, "개인 채팅방");
-    
+
     // 오픈 채팅방
     QWidget *oneByMore_list = new QWidget();
     oneByMore_list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -979,10 +1026,10 @@ void HomeView::setupUI()
     // 접속자 목록 verticalLayout에 신고 기능 추가 - donjizzkan
     QHBoxLayout* topLayout = new QHBoxLayout;
     // topLayout->setAlignment(Qt::AlignVCenter);  // 레이아웃 자체를 수직 가운데 정렬
-    
+
     QLabel* connectLabel = new QLabel("신고하기");
     // connectLabel->setAlignment(Qt::AlignVCenter);  // 라벨 내용도 가운데 정렬
-    
+
     QPushButton* reportBtn = new QPushButton;
     reportBtn->setIcon(QIcon("report.png"));
     reportBtn->setFixedSize(20, 20);
@@ -1036,13 +1083,13 @@ void HomeView::setupUI()
     chatting_ToolBox->addItem(oneByMore_list, "오픈 채팅방");
 
     horizontalLayout_2->addWidget(chatting_ToolBox);
-    
+
     tabWidget->addTab(tab_4, "채팅");
-    
+
     splitter->addWidget(tabWidget);
-    
+
     horizontalLayout_4->addWidget(splitter);
-    
+
     // 오른쪽 여백
     QSpacerItem *horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalLayout_4->addItem(horizontalSpacer);
@@ -1180,6 +1227,22 @@ void HomeView::setAccountInfo(const QJsonObject &userInfo, const QJsonArray &his
         orderPrice->append(price);
         orderTotal->append(total);
     }
+}
+
+// hyungoo, geonwoo
+// 글 작성 성공 시 postwidgetview 에 post item 추가 함수
+void HomeView::addPostWidgetView(const QJsonObject& response){
+    // 리스트 최상단에 글 제목 추가
+    QListWidgetItem* item = new QListWidgetItem(response.value("title").toString());
+    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+    item->setCheckState(Qt::Unchecked);
+    item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+    item->setData(Qt::UserRole, response.value("contents").toString());  // 본문 저장
+    item->setData(Qt::UserRole + 1, response.value("userID").toString());
+    item->setData(Qt::UserRole + 2, response.value("postID").toInt());
+
+    postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
 }
 
 HomeView::~HomeView()

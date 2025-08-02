@@ -96,6 +96,13 @@ void SocketManage::onSocketReadyRead() {
         else if (type == "postAllRead"){
             emit allPostsReceived(obj);
         }
+        // geonwoo 게시판 글 추가 / 삭제 처리 응답 확인
+        else if (type == "postWrite"){
+            emit postWriteReceived(obj);
+        }
+        else if (type == "postDelete"){
+            emit postDeleteReceived(obj);
+        }
         else {
             qDebug() << "SocketManage: 알 수 없는 메시지 타입:" << type;
         }

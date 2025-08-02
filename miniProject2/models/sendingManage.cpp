@@ -199,9 +199,19 @@ QString sendingManage::getSenderID(){
 // geonwoo
 // 게시판 글 write 요청 전달
 void sendingManage::sendPostWrite(const QString& title, const QString& contents){
+    QJsonObject sendingObj;
+    sendingObj["type"] = "postWrite";
+    sendingObj["ID"] = senderID;
+    sendingObj["title"] = title;
+    sendingObj["contents"] = contents;
 
+    QJsonDocument doc(sendingObj);
+    QByteArray sendingArray(doc.toJson(QJsonDocument::Compact));
+    sendingArray.append('\n');
 
-
+    QTcpSocket* socket = SocketManage::instance().socket();
+    socket->write(sendingArray);
+    qDebug() << "서버에 글 write 요청 전달 완료";
 }
 
 // geonwoo
@@ -234,8 +244,20 @@ void sendingManage::sendPostRead(const int& postID){
 
 // geonwoo
 // 게시판 특정 글 delete 요청 전달
-void sendingManage::sendPostDelete(const int& postID){
+void sendingManage::sendPostDelete(const QString& postUserID, const int& postID){
+    QJsonObject sendingObj;
+    sendingObj["type"] = "postDelete";
+    sendingObj["ID"] = senderID;
+    sendingObj["postUserID"] = postUserID;
+    sendingObj["postID"] = postID;
 
+    QJsonDocument doc(sendingObj);
+    QByteArray sendingArray(doc.toJson(QJsonDocument::Compact));
+    sendingArray.append('\n');
+
+    QTcpSocket* socket = SocketManage::instance().socket();
+    socket->write(sendingArray);
+    qDebug() << "서버에 글 삭제 요청 전달 완료";
 }
 
 

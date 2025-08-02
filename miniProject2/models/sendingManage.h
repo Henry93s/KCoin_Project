@@ -61,7 +61,7 @@ public:
 
     // geonwoo
     // 게시판 특정 글 delete 요청 전달
-    void sendPostDelete(const int& postID);
+    void sendPostDelete(const QString& postUserID, const int& postID);
 
 
     static sendingManage* m_instance;
