@@ -13,6 +13,7 @@ ServerManager::ServerManager(QObject* parent): QObject(parent){
     db.setUserName("cointest");     // 계정 명
     db.setPassword("cointest");     // 계정 Password
     db.open();
+
     qDebug() << db.lastError();
 
     run();
@@ -85,6 +86,7 @@ void ServerManager::clientConnect() {
         // DB Query
         connect(handler, &ClientHandler::requestQuery, this, &ServerManager::retQuery);
         connect(handler->GetUserMange(), &userManage::requestQuery, this, &ServerManager::retQuery);
+        connect(handler->GetPostManager(), &PostManager::requestQuery, this, &ServerManager::retQuery);
 
         // 클라이언트를 브로드캐스트 리스트에 추가 - devwooms
         this->addClient(handler);
