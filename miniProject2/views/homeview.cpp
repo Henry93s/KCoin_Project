@@ -535,6 +535,23 @@ void HomeView::setupUI()
 
             if (!title.isEmpty()) {
                 // TODO: 서버 또는 DB 저장 로직 여기에
+                // 리스트 최상단에 글 제목 추가
+/*
+                int newPostId = postListWidget->count() + 1; // UI 단에서는 임시로 번호 부여
+
+                // 🔸 제목 포맷: [번호] 제목 (userID)
+                QString formattedTitle = QString("[%1] %2 (%3)").arg(newPostId).arg(title).arg(currentUserId);
+
+                QListWidgetItem* item = new QListWidgetItem(formattedTitle);
+                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                item->setCheckState(Qt::Unchecked);
+                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+                item->setData(Qt::UserRole, content);             // 본문 저장
+                item->setData(Qt::UserRole + 1, currentUserId);   // userID 저장 (삭제 시 유용)
+
+                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+*/
 
                 // 리스트 최상단에 글 제목 추가
                 QListWidgetItem* item = new QListWidgetItem(title);
@@ -546,6 +563,7 @@ void HomeView::setupUI()
                 // item->setData(Qt::UserRole + 1, currentUserId);
 
                 postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+
             }
             dialog.accept();
         });
