@@ -29,7 +29,7 @@ void LoginView::setupSocketConnection()
         // 192.168.2.235 => devwooms
         // 192.168.1.44 => donjizzkan
         // 192.168.2.207 => hyungoo
-        socket->connectToHost("192.168.2.207", 51234);
+        socket->connectToHost("192.168.2.190", 51234);
         // socket->connectToHost("192.168.2.26", 51234);
         // 192.168.2.190 => geonwoo
 

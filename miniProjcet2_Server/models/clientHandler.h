@@ -47,6 +47,12 @@ private:
     void readyRead_Report(const QJsonObject& obj);
     void readyRead_EmailCheck(const QJsonObject& obj);
     void readyRead_Emailcodecheck(const QJsonObject& obj);
+
+    void readyRead_sendPostWrite(const QJsonObject &obj);
+    void readyRead_sendPostRead(const QJsonObject &obj);
+    void readyRead_sendPostAllRead(const QJsonObject &obj);
+    void readyRead_sendPostDelete(const QJsonObject &obj);
+
 private:
     QTcpSocket* socket;
     qintptr socketDescriptor;

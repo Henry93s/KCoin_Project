@@ -191,6 +191,38 @@ void sendingManage::setSenderID(const QString& ID){
     this->senderID = ID;
 }
 
+// geonwoo
+QString sendingManage::getSenderID(){
+    return this->senderID;
+}
+
+// geonwoo
+// 게시판 글 write 요청 전달
+void sendingManage::sendPostWrite(const QString& title, const QString& contents){
+
+
+
+}
+
+// geonwoo
+// 게시판 전체 글 read 요청 전달
+void sendingManage::sendPostAllRead(){
+
+}
+
+// geonwoo
+// 게시판 특정 글 read 요청 전달
+void sendingManage::sendPostRead(const int& postID){
+
+}
+
+// geonwoo
+// 게시판 특정 글 delete 요청 전달
+void sendingManage::sendPostDelete(const int& postID){
+
+}
+
+
 void sendingManage::sendReport(const QString& name, const QString& reason) {
     QJsonObject obj;
     obj["type"] = "report";
