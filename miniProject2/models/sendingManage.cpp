@@ -55,6 +55,9 @@ void sendingManage::sendMessage(const QString& chatViewName, const QString& text
     sendingObj["chatViewName"] = chatViewName;
     sendingObj["senderName"] = senderName;
     sendingObj["textMessage"] = textMessage;
+    // geonwoo
+    // 채팅 메시지 전송 시 senderID 추가 전송
+    sendingObj["senderID"] = senderID;
     
     QJsonDocument doc(sendingObj);
     
@@ -65,7 +68,7 @@ void sendingManage::sendMessage(const QString& chatViewName, const QString& text
 
     qDebug() << "현재 소켓 : " << socket;
     socket->write(sendingArray);
-    qDebug()<< chatViewName << "으로" << senderName << "의" << textMessage <<" 전송";
+    qDebug()<< chatViewName << "으로[" << senderID << "](" << senderName << ")의" << textMessage <<" 전송";
 }
 
 //==========================
@@ -75,7 +78,9 @@ void sendingManage::sendFile(QStringList filePaths, QString& chatViewName){
     qDebug() << "sendingManage.cpp sendFile";
     QTcpSocket* socket = SocketManage::instance().socket();
     FileSendManager *fileSendManager = new FileSendManager();
-    fileSendManager->sendFile(socket, "filesend", chatViewName, filePaths, senderName);
+    // geonwoo
+    // senderID 같이 전송 추가
+    fileSendManager->sendFile(socket, "filesend", chatViewName, filePaths, senderName, senderID);
 }
 
 //==========================
@@ -88,6 +93,7 @@ void sendingManage::requestFileDownload(const QString& fileId){
     sendingObj["type"] = "filedownload";
     sendingObj["fileId"] = fileId;
     sendingObj["requesterName"] = senderName;
+    sendingObj["requesterID"] = senderID;
     
     QJsonDocument doc(sendingObj);
     QByteArray sendingArray(doc.toJson(QJsonDocument::Compact));
@@ -180,6 +186,11 @@ void sendingManage::setSenderName(const QString& name) {
     senderName = name;
 }
 
+// geonwoo
+void sendingManage::setSenderID(const QString& ID){
+    this->senderID = ID;
+}
+
 void sendingManage::sendReport(const QString& name, const QString& reason) {
     QJsonObject obj;
     obj["type"] = "report";
@@ -195,5 +206,3 @@ void sendingManage::sendReport(const QString& name, const QString& reason) {
 
     qDebug() << "서버로 신고 전송:" << arr;
 }
-
-

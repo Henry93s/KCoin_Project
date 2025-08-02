@@ -31,6 +31,7 @@ public slots:
 
 signals:
     QSqlQuery requestQuery(const QString& strQuery, bool& isSuccess);
+    QSqlQuery requestBindQuery(const QSqlQuery& sqlQuery, bool& isSuccess);
 
 public:
     userManage* GetUserMange() { return usermanage;}

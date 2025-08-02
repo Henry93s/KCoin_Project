@@ -77,8 +77,6 @@ void ClientHandler::onReadyRead() {
                 //==========================
             } else if (type == "filedownload") {
                 readyRead_FileDownload(obj);
-                //==========================
-                //       이메일 인증 요청 처리
             }
             //==========================
             //      채팅 로그 전송
@@ -172,7 +170,8 @@ void ClientHandler::readyRead_MessageSendRequest(const QJsonObject &obj)
     QString senderName = obj.value("senderName").toString();
     QString chatViewName = obj.value("chatViewName").toString();
     QString text = obj.value("textMessage").toString();
-    QString sendString = "[" + senderName + "] : " + text;
+    QString senderID = obj.value("senderID").toString();
+    QString sendString = senderID + "[" + senderName + "] : " + text;
 
     if (usermanage->isBanned(senderName)) {
         // 금지 상태면 "yourebanned" 신호만 전송
@@ -182,6 +181,7 @@ void ClientHandler::readyRead_MessageSendRequest(const QJsonObject &obj)
         socket->write(doc.toJson(QJsonDocument::Compact) + "\n");
         return;
     }
+
     QJsonObject sendObj;
     sendObj["type"] = "messagesend";
     sendObj["textMessage"] = sendString;
@@ -194,43 +194,48 @@ void ClientHandler::readyRead_MessageSendRequest(const QJsonObject &obj)
     ServerManager::getInstance().broadcastMessage(sending);
     qDebug() << "클라이언트로 전송 요청 완료";
 
-    // 전송 내용 파일로 저장, DB 폴더에 "채팅방 이름"의 json파일을 생성 및 열람
-    QString chatPath = usermanage->getDBPath().replace("userInfo.json", chatViewName + ".json");
-    QFile file(chatPath);
+    // 이전 : 전송 내용 파일로 저장, DB 폴더에 "채팅방 이름"의 json파일을 생성 및 열람
+    // 이후 : geonwoo : 채팅 전송 내용 채팅 로그 db table 에 저장
+    // 채팅 로그 테이블 찾기
+    bool roomFindQ_isSuccess;
+    QSqlQuery roomFindQuery = emit requestQuery(QString("SELECT TABLE_NAME FROM \
+        information_schema.TABLES WHERE TABLE_SCHEMA = 'coin' \
+        AND TABLE_NAME = '%1'").arg(chatViewName), roomFindQ_isSuccess);
+    if(roomFindQ_isSuccess && roomFindQuery.next()){
+        qDebug() << "find Room";
 
-    // 파일이 없을 경우 생성
-    if (!file.exists()) {
-        if (file.open(QIODevice::WriteOnly)) {
-            QJsonArray emptyArray;
-            QJsonDocument doc(emptyArray);
-            file.write(doc.toJson());
-            file.close();
-            qDebug() << chatViewName <<" Json 파일 생성";
+    } else {
+        qDebug() << "not find room";
+        // 채팅 로그 테이블 생성
+        bool roomCreate_isSuccess;
+        QSqlQuery roomCreateQuery = emit requestQuery( \
+            QString("CREATE TABLE %1 (\
+                    id INT AUTO_INCREMENT PRIMARY KEY,\
+                    message TEXT NOT NULL,\
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\
+                    )").arg(chatViewName), roomCreate_isSuccess);
+        if(roomCreate_isSuccess){
+            qDebug() << chatViewName << " 채팅 로그 테이블 생성 완료";
         } else {
-            qWarning() << "파일 생성 실패";
+            qWarning() << chatViewName << " 채팅 로그 테이블 생성 실패";
             return;
         }
     }
 
-    // 저장할 내용 이어붙이기 위해 파일의 앞내용 읽어옴
-    QJsonArray messageArray;                   // Json파일내용물 저장될 JsonArray
-    if(file.open(QIODevice::ReadOnly)){
-        QByteArray readData = file.readAll();
-        QJsonDocument dataDoc = QJsonDocument::fromJson(readData);
-        messageArray = dataDoc.array();
-        file.close();
-    }
-    else{
-        qWarning()<<"파일 읽기 실패";
-        return;
-    }
-
-    messageArray.append(sendString);      // json Object를 userArray로
-    if(file.open(QIODevice::WriteOnly)){
-        QJsonDocument newDoc(messageArray);
-        file.write(newDoc.toJson());
-        file.close();
-        qDebug()<<"메세지 저장 완료";
+    // geonwoo : 채팅 로그 테이블에 새 메시지 추가
+    // 채팅 로그 테이블에 메시지 INSERT
+    bool roomChatInsert_isSuccess;
+    // geonwoo : FIX: 채팅 메시지에 SQL 인젝션을 방지하기 위한 bind query 적용
+    // cf. SQL 인젝션 : 사용자가 입력한 값이 SQL 쿼리 문자열에 그대로 삽입되어 악의적인 쿼리가 실행되는 공격
+    QSqlQuery query;
+    QString sqlText = QString("INSERT INTO %1 (message) VALUES (?)").arg(chatViewName);
+    query.prepare(sqlText);
+    query.addBindValue(sendString);
+    QSqlQuery roomChatInsertQuery = emit requestBindQuery(query, roomChatInsert_isSuccess);
+    if(roomChatInsert_isSuccess){
+        qDebug() << chatViewName << " 에 message 삽입 추가 완료";
+    } else {
+        qDebug() << chatViewName << " 에 message 삽입 실패  " << roomChatInsertQuery.lastError().text();
     }
 }
 
@@ -241,6 +246,7 @@ void ClientHandler::readyRead_FileSend(const QJsonObject &obj)
     // JSON에서 파일 메타데이터 및 실제 데이터 추출
     QString chatViewName = obj.value("chatViewName").toString();
     QString senderName = obj.value("senderName").toString();  // ← 전송자 이름 추출
+    QString senderID = obj.value("senderID").toString(); // <- 전송자 ID 추가 geonwoo
     QString fileId = obj.value("fileId").toString();
     QString fileName = obj.value("fileName").toString();
     QString originalPath = obj.value("originalPath").toString();
@@ -253,6 +259,7 @@ void ClientHandler::readyRead_FileSend(const QJsonObject &obj)
 
     qDebug() << "파일 정보:";
     qDebug() << "  - 전송자:" << senderName;
+    qDebug() << "  - 전송자 ID: " << senderID;
     qDebug() << "  - 파일ID:" << fileId;
     qDebug() << "  - 파일명:" << fileName;
     qDebug() << "  - 크기:" << fileSize << "bytes";
@@ -294,82 +301,86 @@ void ClientHandler::readyRead_FileSend(const QJsonObject &obj)
         qWarning() << "서버에 파일 저장 실패:" << serverFilePath;
     }
 
-    // 파일 메타데이터를 chatFiles.json에 저장
-    QString chatFilesPath = usermanage->getDBPath().replace("userInfo.json", "chatFiles.json");
-    QFile chatFilesFile(chatFilesPath);
-
-    QJsonArray fileArray;
-
-    // 기존 파일 데이터 읽기
-    if (chatFilesFile.exists() && chatFilesFile.open(QIODevice::ReadOnly)) {
-        QByteArray readData = chatFilesFile.readAll();
-        QJsonDocument dataDoc = QJsonDocument::fromJson(readData);
-        if (dataDoc.isArray()) {
-            fileArray = dataDoc.array();
-        }
-        chatFilesFile.close();
+    // 이전 : 파일 메타데이터를 chatFiles.json에 저장
+    // 이후 : geonwoo : 파일 메타데이터를 DB 테이블에 저장
+    bool fileMetaTableFind_isSuccess;
+    QSqlQuery fileMetaTableFindQuery = emit requestQuery(QString(\
+            "SELECT TABLE_NAME FROM \
+        information_schema.TABLES WHERE TABLE_SCHEMA = 'coin' \
+        AND TABLE_NAME = 'chatFiles'"), fileMetaTableFind_isSuccess);
+    if(!fileMetaTableFind_isSuccess){
+        qDebug() << "chatFiles 파일 메타데이터 테이블 찾기 쿼리 동작 실패";
+        return;
     }
 
-    // 새 파일 정보 객체 생성
-    QJsonObject fileRecord;
-    fileRecord["fileId"] = fileId;
-    fileRecord["fileName"] = fileName;
-    fileRecord["senderName"] = senderName;  // ← 전송자 이름 저장
-    fileRecord["originalPath"] = originalPath;
-    fileRecord["serverPath"] = serverFilePath;  // ← 서버 저장 경로 추가
-    fileRecord["fileSize"] = fileSize;
-    fileRecord["fileExtension"] = fileExtension;
-    fileRecord["mimeType"] = mimeType;
-    fileRecord["chatViewName"] = chatViewName;
-    fileRecord["timestamp"] = timestamp;
-    fileRecord["checksum"] = checksum;
-    fileRecord["uploadTime"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-
-    // 배열에 추가
-    fileArray.append(fileRecord);
-
-    // 파일에 저장
-    if (chatFilesFile.open(QIODevice::WriteOnly)) {
-        QJsonDocument newDoc(fileArray);
-        chatFilesFile.write(newDoc.toJson());
-        chatFilesFile.close();
-        qDebug() << "파일 메타데이터 저장 완료:" << fileName;
+    // 이전 : 배열에 추가
+    // 이후 : geonwoo : 파일 메타데이터 테이블에 추가
+    bool fileMetaTableInsert_isSuccess;
+    QSqlQuery query;
+    query.prepare("INSERT INTO chatFiles (chatViewName, checksum, fileExtension, fileId, fileName, fileSize, mimeType, originalPath, senderName, senderID, serverPath, timestamp, uploadTime) "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    query.addBindValue(chatViewName);
+    query.addBindValue(checksum);
+    query.addBindValue(fileExtension);
+    query.addBindValue(fileId);
+    query.addBindValue(fileName);
+    query.addBindValue(fileSize);
+    query.addBindValue(mimeType);
+    query.addBindValue(originalPath);
+    query.addBindValue(senderName);
+    query.addBindValue(senderID);
+    query.addBindValue(serverFilePath);
+    query.addBindValue(timestamp);
+    query.addBindValue(QDateTime::currentDateTime().toString(Qt::ISODate));
+    QSqlQuery fileMetaTableInsertQuery = emit requestBindQuery(query, fileMetaTableInsert_isSuccess);
+    if(!fileMetaTableInsert_isSuccess){
+        qDebug() << "fileMetaTableInsert 처리 에러 : " << fileMetaTableInsertQuery.lastError().text();
     } else {
-        qWarning() << "chatFiles.json 저장 실패";
+        qDebug() << "fileMetaTableInsert 처리 완료";
     }
 
     // 채팅 메시지로 파일 공유 알림 추가 (전송자 이름 포함)
-    QString fileMessage = QString("<a href='download://%1'>[%2] [파일] %3 (%4 bytes) - 클릭하여 다운로드</a>")
-                              .arg(fileId).arg(senderName).arg(fileName).arg(fileSize);
-    QString chatPath = usermanage->getDBPath().replace("userInfo.json", chatViewName + ".json");
-    QFile chatFile(chatPath);
+    QString fileMessage = QString("<a href='download://%1'>%2[%3] [파일] %4 (%5 bytes) - 클릭하여 다운로드</a>")
+                              .arg(fileId).arg(senderID).arg(senderName).arg(fileName).arg(fileSize);
 
-    // 채팅 로그에 파일 메시지 추가
-    QJsonArray messageArray;
-    if (chatFile.exists() && chatFile.open(QIODevice::ReadOnly)) {
-        QByteArray readData = chatFile.readAll();
-        QJsonDocument dataDoc = QJsonDocument::fromJson(readData);
-        if (dataDoc.isArray()) {
-            messageArray = dataDoc.array();
-        }
-        chatFile.close();
+    // 이전 : 채팅 로그에 파일 메시지 추가
+    // 이후 : geonwoo : 채팅 로그 테이블에 파일 메시지를 추가
+    // 1. 먼저 채팅 로그 테이블 찾기
+    bool roomFindQ_isSuccess;
+    QSqlQuery roomFindQuery = emit requestQuery(QString("SELECT TABLE_NAME FROM \
+        information_schema.TABLES WHERE TABLE_SCHEMA = 'coin' \
+        AND TABLE_NAME = '%1'").arg(chatViewName), roomFindQ_isSuccess);
+    if(roomFindQ_isSuccess && roomFindQuery.next()){
+        qDebug() << "find Room";
+
     } else {
-        // 파일이 없으면 새로 생성
-        if (chatFile.open(QIODevice::WriteOnly)) {
-            QJsonArray emptyArray;
-            QJsonDocument doc(emptyArray);
-            chatFile.write(doc.toJson());
-            chatFile.close();
+        qDebug() << "not find room";
+        // 채팅 로그 테이블 생성
+        bool roomCreate_isSuccess;
+        QSqlQuery roomCreateQuery = emit requestQuery( \
+            QString("CREATE TABLE %1 (\
+                    id INT AUTO_INCREMENT PRIMARY KEY,\
+                    message TEXT NOT NULL,\
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\
+                    )").arg(chatViewName), roomCreate_isSuccess);
+        if(roomCreate_isSuccess){
+            qDebug() << chatViewName << " 채팅 로그 테이블 생성 완료";
+        } else {
+            qWarning() << roomCreateQuery.lastError().text();
         }
     }
 
-    // 파일 메시지를 채팅 로그에 추가
-    messageArray.append(fileMessage);
-    if (chatFile.open(QIODevice::WriteOnly)) {
-        QJsonDocument newDoc(messageArray);
-        chatFile.write(newDoc.toJson());
-        chatFile.close();
-        qDebug() << "채팅 로그에 파일 메시지 추가 완료";
+    // 2. 채팅 로그 테이블에 파일 메시지를 추가
+    bool roomChatInsert_isSuccess;
+    QSqlQuery query2;
+    QString sqlText = QString("INSERT INTO %1 (message) VALUES (?)").arg(chatViewName);
+    query2.prepare(sqlText);
+    query2.addBindValue(fileMessage);
+    QSqlQuery roomChatInsertQuery = emit requestBindQuery(query2, roomChatInsert_isSuccess);
+    if(roomChatInsert_isSuccess){
+        qDebug() << chatViewName << " 에 file msg 삽입 추가 완료";
+    } else {
+        qDebug() << roomChatInsertQuery.lastError().text();
     }
 
     // 다른 클라이언트들에게 파일 공유 알림 브로드캐스트
@@ -384,7 +395,7 @@ void ClientHandler::readyRead_FileSend(const QJsonObject &obj)
     broadcastData.append('\n');
 
     ServerManager::getInstance().broadcastMessage(broadcastData);
-    qDebug() << "파일 업로드 완료 알림 브로드캐스트 완료:" << senderName;
+    qDebug() << "파일 업로드 완료 알림 브로드캐스트 완료: ID: " << senderID << " name: " << senderName;
 }
 
 void ClientHandler::readyRead_FileDownload(const QJsonObject &obj)
@@ -396,66 +407,46 @@ void ClientHandler::readyRead_FileDownload(const QJsonObject &obj)
 
     qDebug() << "요청자:" << requesterName << "| 파일ID:" << fileId;
 
-    // chatFiles.json에서 파일 정보 찾기
-    QString chatFilesPath = usermanage->getDBPath().replace("userInfo.json", "chatFiles.json");
-    QFile chatFilesFile(chatFilesPath);
-
-    QJsonObject fileInfo;
-    bool fileFound = false;
-
-    if (chatFilesFile.exists() && chatFilesFile.open(QIODevice::ReadOnly)) {
-        QByteArray readData = chatFilesFile.readAll();
-        QJsonDocument dataDoc = QJsonDocument::fromJson(readData);
-
-        if (dataDoc.isArray()) {
-            QJsonArray fileArray = dataDoc.array();
-
-            // 파일 ID로 파일 정보 검색
-            for (const QJsonValue& value : fileArray) {
-                QJsonObject file = value.toObject();
-                if (file["fileId"].toString() == fileId) {
-                    fileInfo = file;
-                    fileFound = true;
-                    break;
-                }
-            }
-        }
-        chatFilesFile.close();
-    }
-
     QJsonObject response;
     response["type"] = "filedownload";
     response["fileId"] = fileId;
 
-    if (fileFound) {
-        QString serverPath = fileInfo["serverPath"].toString();
-        QString fileName = fileInfo["fileName"].toString();
-
-        // 서버에서 파일 읽기
-        QFile serverFile(serverPath);
-        if (serverFile.exists() && serverFile.open(QIODevice::ReadOnly)) {
-            QByteArray fileData = serverFile.readAll();
-            serverFile.close();
-
-            // Base64로 인코딩
-            QString base64Data = fileData.toBase64();
-
-            response["success"] = true;
-            response["fileName"] = fileName;
-            response["fileData"] = base64Data;
-            response["fileSize"] = fileData.size();
-
-            qDebug() << "파일 다운로드 준비 완료:" << fileName << "(" << fileData.size() << "bytes)";
-
-        } else {
-            qWarning() << "서버 파일 읽기 실패:" << serverPath;
-            response["success"] = false;
-            response["error"] = "파일을 읽을 수 없습니다";
-        }
+    // 이전 : chatFiles.json에서 파일 정보 찾기
+    // 이후 : geonwoo : 채팅 로그 테이블에서 다운로드 요청 파일 찾기
+    bool chatFileDownQuery_isSuccess;
+    QString serverPath;
+    QString fileName;
+    QSqlQuery chatFileDownQuery = emit requestQuery(QString(\
+        "SELECT serverPath, fileName FROM \
+        chatFiles WHERE fileId = '%1'").arg(fileId), chatFileDownQuery_isSuccess);
+    if(chatFileDownQuery_isSuccess && chatFileDownQuery.next()){
+        serverPath = chatFileDownQuery.value(0).toString();
+        fileName = chatFileDownQuery.value(1).toString();
+        qDebug() << "파일 찾기 성공 ! serverPath : " << serverPath << "  fileName: " << fileName;
     } else {
-        qWarning() << "파일 ID를 찾을 수 없음:" << fileId;
-        response["success"] = false;
+        qDebug() << "chatFiles 테이블에서 요청한 파일 찾기 쿼리 동작 실패 또는 결과 없음";
         response["error"] = "파일을 찾을 수 없습니다";
+    }
+
+    QFile serverFile(serverPath);
+    if (serverFile.exists() && serverFile.open(QIODevice::ReadOnly)) {
+        QByteArray fileData = serverFile.readAll();
+        serverFile.close();
+
+        // Base64로 인코딩
+        QString base64Data = fileData.toBase64();
+
+        response["success"] = true;
+        response["fileName"] = fileName;
+        response["fileData"] = base64Data;
+        response["fileSize"] = fileData.size();
+
+        qDebug() << "파일 다운로드 준비 완료!!! :" << fileName << "(" << fileData.size() << "bytes)";
+
+    } else {
+        qWarning() << "서버 파일 읽기 실패!!! :" << serverPath;
+        response["success"] = false;
+        response["error"] = "파일을 읽을 수 없습니다!!!";
     }
 
     // 요청한 클라이언트에게만 응답 전송
@@ -465,40 +456,42 @@ void ClientHandler::readyRead_FileDownload(const QJsonObject &obj)
 
     socket->write(responseData);
     socket->flush();
-    qDebug() << "파일 다운로드 응답 전송 완료";
+    qDebug() << "파일 다운로드 응답 전송 완료!!!";
 }
 
 void ClientHandler::readyRead_GiveLog(const QJsonObject &obj)
 {
     QString chatViewName = obj.value("chatViewName").toString();
-    // 폴더에 있는 파일 읽어옴
-    QString chatLogPath = usermanage->getDBPath().replace("userInfo.json", chatViewName + ".json");
-    QFile file(chatLogPath);
     QJsonObject JsonResponse;
     JsonResponse["type"] = "messagelog";
 
-    // 파일이 없을 경우 로그 없음 전송
-    if (!file.exists()) {
-        JsonResponse["exist"] = "no";   // 존재여부 no
-        QJsonDocument respDoc(JsonResponse);
-        QByteArray respData = respDoc.toJson(QJsonDocument::Compact);
-        respData.append('\n');
-        socket->write(respData);
-    } else{     // 파일이 있을 경우 파일 전부 읽어와 내용물 전송
-        file.open(QIODevice::ReadOnly);
-        // 읽어오는데에 쓰는 변수
-        QByteArray readData = file.readAll();
-        QJsonDocument dataDoc = QJsonDocument::fromJson(readData);
-        QJsonArray messageArray = dataDoc.array();
-        JsonResponse["exist"] = "yes";
-        JsonResponse["log"] = messageArray;
-        file.close();
-        // 전송하는데에 쓰는 변수
-        QJsonDocument sendingDoc(JsonResponse);
-        QByteArray sendingData = sendingDoc.toJson(QJsonDocument::Compact);
-        sendingData.append('\n');
-        socket->write(sendingData);
+    // 이전 : 폴더에 있는 파일 읽어옴
+    // 이후 : geonwoo : db 에서 채팅로그를 읽어옴
+    bool roomChatRead_isSucccess;
+    QSqlQuery roomChatReadQuery = emit requestQuery(\
+        QString("SELECT * FROM %1").arg(chatViewName)\
+        , roomChatRead_isSucccess);
+    if(roomChatRead_isSucccess){
+        qDebug() << chatViewName << " 채팅 로그 테이블을 정상적으로 Read 했습니다.";
+    } else {
+        qDebug() << chatViewName << " 채팅 로그 테이블 Read 실패";
+        return;
     }
+
+    QJsonArray messageArray;
+    while(roomChatReadQuery.next()){
+        QString message = roomChatReadQuery.value("message").toString();
+        messageArray.append(message);
+    }
+
+    JsonResponse["exist"] = "yes";
+    JsonResponse["log"] = messageArray;
+
+    // 전송하는데에 쓰는 변수
+    QJsonDocument sendingDoc(JsonResponse);
+    QByteArray sendingData = sendingDoc.toJson(QJsonDocument::Compact);
+    sendingData.append('\n');
+    socket->write(sendingData);
 }
 
 void ClientHandler::readyRead_Trade(const QJsonObject &obj)

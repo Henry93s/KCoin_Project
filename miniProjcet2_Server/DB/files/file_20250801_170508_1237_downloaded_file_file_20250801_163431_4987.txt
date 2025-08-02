@@ -1,0 +1,18 @@
+# 1. 현재 디렉토리에 Makefile 저장
+
+# 2. 빌드 (server와 client 모두 컴파일됨)
+make
+
+# 3. 각각 따로 빌드하려면
+make server
+make client
+
+# 4. 빌드된 실행 파일 확인
+ls -l server client
+
+# 5. 실행 예시
+./server
+./client 127.0.0.1
+
+# 6. 빌드된 실행 파일 제거
+make clean

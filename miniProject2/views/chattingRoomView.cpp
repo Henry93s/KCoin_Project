@@ -246,9 +246,26 @@ ChattingRoomView::ChattingRoomView(const QString& name, QWidget *parent)
         if (success && !base64Data.isEmpty()) {
             // Base64 데이터를 바이너리로 디코딩
             QByteArray fileData = QByteArray::fromBase64(base64Data.toUtf8());
-            
+
+
             // 저장 경로 가져오기 (미리 저장해둔 경로 사용)
             QString savePath = pendingDownloads.value(fileId);
+
+            // geonwoo
+            // 저장 시 확장자가 없으면 fileName 에서 붙이기
+            // 1. filename 에서 확장자 추출
+            QString extension;
+            int lastDotIndex = fileName.lastIndexOf('.');
+            if (lastDotIndex != -1 && lastDotIndex < fileName.length() - 1) {
+                extension = fileName.mid(lastDotIndex);  // ".txt", ".jpg"
+            }
+            // 2. savePath에 확장자가 없으면 붙이기
+            if (!QFileInfo(savePath).suffix().isEmpty()) {
+                // 이미 확장자가 있는 경우 -> 아무것도 하지 않음
+            } else if (!extension.isEmpty()) {
+                // 확장자 없음 -> 확장자 붙임.
+                savePath += extension;
+            }
             
             if (!savePath.isEmpty() && !fileData.isEmpty()) {
                 QFile file(savePath);

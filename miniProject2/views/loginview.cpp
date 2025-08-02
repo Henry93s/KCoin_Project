@@ -31,6 +31,8 @@ void LoginView::setupSocketConnection()
         // 192.168.2.207 => hyungoo
         socket->connectToHost("192.168.2.207", 51234);
         // socket->connectToHost("192.168.2.26", 51234);
+        // 192.168.2.190 => geonwoo
+
         // 서버 연결 완료 시그널은 SocketManage에서 처리하므로 여기서 직접 연결할
         // 필요 없음 connect(socket, &QTcpSocket::connected, this, [](){
         //     qDebug("서버 연결 완료");
@@ -53,12 +55,21 @@ void LoginView::handleLoginResponse(const QJsonObject &obj)
         // 로그인 성공/실패에 따라 UI 전환
         if (result == "success") {
             // 해당 로그인 정보에 해당하는 이름 받아 옴
+            // geonwoo ID 를 sendingManage 에 추가 관리
+            QJsonObject userObj = obj.value("user").toObject();  // "user" 객체 추출
+            QString ID = userObj.value("ID").toString();  // "ID" 추출
+
             QString senderName = obj.value("name").toString();
             QJsonObject userInfo = obj["user"].toObject();
             QJsonArray history = obj["history"].toArray();
-            qDebug() << senderName << "으로 로그인 성공";
-            // sendingManage에 있는 이름 setter로 내 이름 저장
+
+            qDebug() << ID << "[" << senderName << "]" << " 으로 로그인 성공";
+            // 이전 : sendingManage에 있는 이름 setter로 내 이름 저장
             // 파일이나 메세지 전송시 저장된 senderName 불러옴
+            // 이후 : setter 로 내 ID, 이름 저장 및 파일이나 메시지 전송 시 저장된 ID 로 불러옴
+            // 출력은 동일(이름)
+            sendingManage::instance()->setSenderID(ID);
+
             sendingManage::instance()->setSenderName(senderName);
             emit loginSuccessWithInfo(userInfo, history);   // 유저 정보 띄우기
             emit goToMain(); // 메인 화면으로 이동
