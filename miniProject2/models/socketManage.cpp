@@ -90,6 +90,13 @@ void SocketManage::onSocketReadyRead() {
             qDebug() << "이메일 인증 실패";
             QMessageBox::warning(nullptr, "인증 코드 불일치", "인증 번호를 다시 확인해주세요.");
         }
+        // geonwoo 게시판 글 추가 / 삭제 처리 응답 확인
+        else if (type == "postWrite"){
+            emit postWriteReceived(obj);
+        }
+        else if (type == "postDelete"){
+            emit postDeleteReceived(obj);
+        }
         else {
             qDebug() << "SocketManage: 알 수 없는 메시지 타입:" << type;
         }

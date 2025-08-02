@@ -225,6 +225,35 @@ void HomeView::connectSignal(){
             }
         }
     });
+
+    // geonwoo
+    // 게시판 글 추가 처리에 대한 응답 시그널에 대한 슬롯 (lambda)
+    connect(&SocketManage::instance(), &SocketManage::postWriteReceived, this, [this](const QJsonObject& response) {
+        qDebug() << "게시판 글 추가 처리에 대한 응답 받음 (slot)";
+
+        bool is_success = response.value("success").toBool();
+        if(is_success){
+            QString userID = response.value("userID").toString();
+            QString title = response.value("title").toString();
+            QString contents = response.value("contents").toString();
+            int postID = response.value("postID").toInt();
+
+            qDebug() << "userID : " << userID;
+            qDebug() << "title : " << title;
+            qDebug() << "contents : " << contents;
+            qDebug() << "postID : " << postID;
+            qDebug() << "로 글 작성 완료 됨 !!!";
+        } else {
+            qDebug() << "글 작성 실패함!!!";
+        }
+    });
+
+    // geonwoo
+    // 게시판 글 삭제 처리에 대한 응답 시그널에 대한 슬롯 (lambda)
+    connect(&SocketManage::instance(), &SocketManage::postDeleteReceived, this, [this](const QJsonObject& response) {
+        qDebug() << "게시판 글 삭제 처리에 대한 응답 받음 (slot)";
+
+    });
 }
 
 // geonwoo
@@ -536,6 +565,7 @@ void HomeView::setupUI()
             if (!title.isEmpty()) {
                 // TODO: 서버 또는 DB 저장 로직 여기에
                 // 글 작성 요청 전달
+                qDebug() << "homeview : 글 작성 요청 전달 진행";
                 sendingManage::instance()->sendPostWrite(title, content);
 
                 // 리스트 최상단에 글 제목 추가

@@ -110,7 +110,7 @@ void ClientHandler::onReadyRead() {
             }
             // 게시판 글 write 처리
             else if (type == "postWrite"){
-
+                readyRead_sendPostWrite(obj);
             }
             // 글 read
             else if (type == "postRead"){
@@ -118,7 +118,7 @@ void ClientHandler::onReadyRead() {
             }
             // 글 delete
             else if (type == "postDelete"){
-
+                readyRead_sendPostDelete(obj);
             }
             // 글 all read
             else if (type == "postAllRead"){
@@ -863,16 +863,63 @@ void ClientHandler::readyRead_Emailcodecheck(const QJsonObject &obj)
     }
 }
 
-
+// geonwoo
+// 게시판 글 write 처리
 void ClientHandler::readyRead_sendPostWrite(const QJsonObject &obj){
+    qDebug() << "게시판 글 추가 요청 받음";
 
+    QString ID = obj.value("ID").toString();
+    QString title = obj.value("title").toString();
+    QString contents = obj.value("contents").toString();
+
+    qDebug() << "글 추가 요청 user ID : " << ID;
+    qDebug() << "글 타이틀 : " << title;
+    qDebug() << "글 내용 : " << contents;
+
+    QJsonObject response;
+
+    bool sendPostWrite_isSuccess;
+    QSqlQuery query;
+    QString sqlText = QString("INSERT INTO Post (userID, title, contents) VALUES (?, ?, ?)");
+    query.prepare(sqlText);
+    query.addBindValue(ID);
+    query.addBindValue(title);
+    query.addBindValue(contents);
+    QSqlQuery sendPostWriteQuery = emit requestBindQuery(query, sendPostWrite_isSuccess);
+    if(sendPostWrite_isSuccess){
+        qDebug() << "post 삽입 추가 완료";
+        response["success"] = true;
+    } else {
+        qDebug() << "post 삽입 실패  " << sendPostWriteQuery.lastError().text();
+        response["success"] = false;
+    }
+
+    int postID = sendPostWriteQuery.lastInsertId().toInt();
+    response["type"] = "postWrite";
+    response["title"] = title;
+    response["contents"] = contents;
+    response["postID"] = postID;
+    response["userID"] = ID;
+
+    // 요청한 클라이언트에게만 응답 전송
+    QJsonDocument responseDoc(response);
+    QByteArray responseData = responseDoc.toJson(QJsonDocument::Compact);
+    responseData.append('\n');
+
+    socket->write(responseData);
+    socket->flush();
+    qDebug() << "게시판 글 추가 처리 응답 전송 완료!!!";
 }
 void ClientHandler::readyRead_sendPostRead(const QJsonObject &obj){
 
 }
+// geonwoo
+// 게시판 전체 글 Read 처리
 void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj){
 
 }
+// geonwoo
+// 게시판 특정 글 delete 처리 (post column의 ID 와 로그인한 ID 일치 여부 판단 필수)
 void ClientHandler::readyRead_sendPostDelete(const QJsonObject &obj){
 
 }
