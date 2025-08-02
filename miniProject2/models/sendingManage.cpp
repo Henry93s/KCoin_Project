@@ -228,10 +228,11 @@ void sendingManage::sendPostRead(const int& postID){
 
 // geonwoo
 // 게시판 특정 글 delete 요청 전달
-void sendingManage::sendPostDelete(const int& postID){
+void sendingManage::sendPostDelete(const QString& postUserID, const int& postID){
     QJsonObject sendingObj;
     sendingObj["type"] = "postDelete";
     sendingObj["ID"] = senderID;
+    sendingObj["postUserID"] = postUserID;
     sendingObj["postID"] = postID;
 
     QJsonDocument doc(sendingObj);
@@ -240,6 +241,7 @@ void sendingManage::sendPostDelete(const int& postID){
 
     QTcpSocket* socket = SocketManage::instance().socket();
     socket->write(sendingArray);
+    qDebug() << "서버에 글 삭제 요청 전달 완료";
 }
 
 

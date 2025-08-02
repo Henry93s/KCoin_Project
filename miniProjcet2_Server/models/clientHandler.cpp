@@ -108,6 +108,7 @@ void ClientHandler::onReadyRead() {
             else if (type == "emailcodecheck"){
                 readyRead_Emailcodecheck(obj);
             }
+            // geonwoo
             // 게시판 글 write 처리
             else if (type == "postWrite"){
                 readyRead_sendPostWrite(obj);
@@ -116,6 +117,7 @@ void ClientHandler::onReadyRead() {
             else if (type == "postRead"){
 
             }
+            // geonwoo
             // 글 delete
             else if (type == "postDelete"){
                 readyRead_sendPostDelete(obj);
@@ -921,5 +923,47 @@ void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj){
 // geonwoo
 // 게시판 특정 글 delete 처리 (post column의 ID 와 로그인한 ID 일치 여부 판단 필수)
 void ClientHandler::readyRead_sendPostDelete(const QJsonObject &obj){
+    qDebug() << "게시판 글 삭제 요청 받음";
 
+    QString ID = obj.value("ID").toString();
+    QString postUserID = obj.value("postUserID").toString();
+    int postID = obj.value("postID").toInt();
+
+    qDebug() << "글 삭제 요청 user ID : " << ID;
+    qDebug() << "글 작성자 ID : " << postUserID;
+    qDebug() << "글 번호 ID : " << postID;
+
+    QJsonObject response;
+    response["type"] = "postDelete";
+
+    // 글 작성자 ID 와 요청자 ID 가 일치할 때 삭제 쿼리를 동작한다.
+    if(ID == postUserID){
+        bool sendPostDelete_isSuccess;
+        QSqlQuery query;
+        QString sqlText = QString("DELETE FROM Post WHERE postID = ?");
+        query.prepare(sqlText);
+        query.addBindValue(postID);
+
+        QSqlQuery sendPostDeleteQuery = emit requestBindQuery(query, sendPostDelete_isSuccess);
+        if(sendPostDelete_isSuccess){
+            qDebug() << "post 삭제 완료";
+            response["success"] = true;
+        } else {
+            qDebug() << "post 삭제 실패  " << sendPostDeleteQuery.lastError().text();
+            response["success"] = false;
+            response["reason"] = "쿼리 동작 실패 또는 postID 와 일치한 post 가 없음";
+        }
+    } else {
+        response["success"] = false;
+        response["reason"] = "글 작성자가 아니기 때문에 삭제 명령 실패 처리";
+    }
+
+    // 요청한 클라이언트에게만 응답 전송
+    QJsonDocument responseDoc(response);
+    QByteArray responseData = responseDoc.toJson(QJsonDocument::Compact);
+    responseData.append('\n');
+
+    socket->write(responseData);
+    socket->flush();
+    qDebug() << "게시판 글 삭제 처리 응답 전송 완료!!!";
 }

@@ -243,6 +243,8 @@ void HomeView::connectSignal(){
             qDebug() << "contents : " << contents;
             qDebug() << "postID : " << postID;
             qDebug() << "로 글 작성 완료 됨 !!!";
+
+            addPostWidgetView(response);
         } else {
             qDebug() << "글 작성 실패함!!!";
         }
@@ -253,6 +255,15 @@ void HomeView::connectSignal(){
     connect(&SocketManage::instance(), &SocketManage::postDeleteReceived, this, [this](const QJsonObject& response) {
         qDebug() << "게시판 글 삭제 처리에 대한 응답 받음 (slot)";
 
+        bool is_success = response.value("success").isBool();
+        if(is_success){
+            qDebug() << "선택한 글이 정상적으로 삭제되었습니다.";
+        } else {
+            qDebug() << response.value("reason").toString();
+        }
+
+        // 삭제 완료 시 UI 처리
+        // 전체 글 refresh 요청 api 호출
     });
 }
 
@@ -564,20 +575,11 @@ void HomeView::setupUI()
 
             if (!title.isEmpty()) {
                 // TODO: 서버 또는 DB 저장 로직 여기에
-                // 글 작성 요청 전달
+                // geonwoo : 글 작성 요청 전달
                 qDebug() << "homeview : 글 작성 요청 전달 진행";
                 sendingManage::instance()->sendPostWrite(title, content);
-
-                // 리스트 최상단에 글 제목 추가
-                QListWidgetItem* item = new QListWidgetItem(title);
-                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                item->setCheckState(Qt::Unchecked);
-                item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
-
-                item->setData(Qt::UserRole, content);  // 본문 저장
-                // item->setData(Qt::UserRole + 1, currentUserId);
-
-                postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
+                // 글 작성이 성공할 경우
+                // postWriteReceived 시그널에 의한 슬롯에서 처리하여 글을 추가한다.
             }
             dialog.accept();
         });
@@ -611,10 +613,16 @@ void HomeView::setupUI()
     });
 
     connect(deleteWriting, &QPushButton::clicked, this, [this]() {
-        for (int i = postListWidget->count() - 1; i >= 0; --i) {
+        // geonwoo
+        // 선택한 listwidget 의 post item 을 삭제하는 요청 전달 시작
+        for(auto i = postListWidget->count() - 1; i >= 0; --i){
             QListWidgetItem* item = postListWidget->item(i);
             if (item->checkState() == Qt::Checked) {
-                delete postListWidget->takeItem(i);  // 리스트에서 제거 + 메모리 해제
+                QString postUserID = item->data(Qt::UserRole + 1).toString();
+                int postID = item->data(Qt::UserRole + 2).toInt();
+
+                qDebug() << "homeview : 삭제하려는 글의 글작성자ID : " << postUserID << " 글 post id : " << postID;
+                sendingManage::instance()->sendPostDelete(postUserID, postID);
             }
         }
     });
@@ -1056,6 +1064,22 @@ void HomeView::setAccountInfo(const QJsonObject &userInfo, const QJsonArray &his
         orderPrice->append(price);
         orderTotal->append(total);
     }
+}
+
+// hyungoo, geonwoo
+// 글 작성 성공 시 postwidgetview 에 post item 추가 함수
+void HomeView::addPostWidgetView(const QJsonObject& response){
+    // 리스트 최상단에 글 제목 추가
+    QListWidgetItem* item = new QListWidgetItem(response.value("title").toString());
+    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+    item->setCheckState(Qt::Unchecked);
+    item->setSizeHint(QSize(0, 40));  // 아이템 높이 크게
+
+    item->setData(Qt::UserRole, response.value("contents").toString());  // 본문 저장
+    item->setData(Qt::UserRole + 1, response.value("userID").toString());
+    item->setData(Qt::UserRole + 2, response.value("postID").toInt());
+
+    postListWidget->insertItem(0, item);   // 최신순 (위쪽에 삽입)
 }
 
 HomeView::~HomeView()

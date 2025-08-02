@@ -100,6 +100,10 @@ private:
     // 알림 설정 값보다 현재 코인 가격이 클 때 LED 점등 느리게 GPIO 값 + (비프음 신호 시그널) 전달
     void gpio_Up_LED();
 
+    // geonwoo
+    // 게시판 글 추가 시 게시판 위젯에 아이템 ui 추가 UI 함수
+    void addPostWidgetView(const QJsonObject& response);
+
 signals:
   void update_price_changed(double new_price);
 
