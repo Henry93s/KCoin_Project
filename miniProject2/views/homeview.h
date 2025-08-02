@@ -106,7 +106,8 @@ private:
 
 signals:
   void update_price_changed(double new_price);
-
+    // kimsungwon
+  void update_posts();
 private slots:
    void handleTradeResponse(const QJsonObject &obj);
    void on_update_price_changed(double new_price);

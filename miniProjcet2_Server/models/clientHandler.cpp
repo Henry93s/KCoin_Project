@@ -953,7 +953,7 @@ void ClientHandler::readyRead_sendPostAllRead(const QJsonObject &obj)
     }
     while(query.next()){
         QJsonObject perPost;
-        perPost["postID"] = query.value(0).toString();
+        perPost["postID"] = query.value(0).toInt();
         perPost["userID"] = query.value(1).toString();
         perPost["title"] = query.value(2).toString();
         perPost["contents"] = query.value(3).toString();

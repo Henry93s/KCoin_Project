@@ -253,6 +253,10 @@ void HomeView::connectSignal(){
         }
     });
 
+    // kimsungwon
+    connect(this, &HomeView::update_posts, sendingManage::instance(), [](){
+        sendingManage::instance()->sendPostAllRead();
+    });
     // geonwoo
     // 게시판 글 삭제 처리에 대한 응답 시그널에 대한 슬롯 (lambda)
     connect(&SocketManage::instance(), &SocketManage::postDeleteReceived, this, [this](const QJsonObject& response) {
@@ -261,12 +265,14 @@ void HomeView::connectSignal(){
         bool is_success = response.value("success").isBool();
         if(is_success){
             qDebug() << "선택한 글이 정상적으로 삭제되었습니다.";
+
+            // 삭제 완료 시 UI 처리
+            // 전체 글 refresh 요청 api 호출
+            sendingManage::instance()->sendPostAllRead();
         } else {
             qDebug() << response.value("reason").toString();
         }
 
-        // 삭제 완료 시 UI 처리
-        // 전체 글 refresh 요청 api 호출
     });
 }
 

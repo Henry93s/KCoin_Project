@@ -50,11 +50,9 @@ public:
     // geonwoo
     // 게시판 글 write 요청 전달
     void sendPostWrite(const QString& title, const QString& contents);
-
     // geonwoo
     // 게시판 전체 글 read 요청 전달
     void sendPostAllRead();
-
     // geonwoo
     // 게시판 특정 글 read 요청 전달
     void sendPostRead(const int& postID);
