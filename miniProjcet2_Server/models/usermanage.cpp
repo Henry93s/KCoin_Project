@@ -166,7 +166,22 @@ void userManage::signUp(userInfo& info){
     // userObj["coins"] = coins;
     // userObj["payment"] = info.payment;
     // userObj["money"] = 10000000;
+    bool isSuccess_confirm;
+    QSqlQuery query_confirm = emit requestQuery(QString("SELECT ID, password, money, name, payment, phoneNum FROM coin.`User`"), isSuccess_confirm);
+    if(!isSuccess_confirm){
+        qDebug() << query_confirm.lastError();
+    }
 
+    while (query_confirm.next()) {
+        QString listID = query_confirm.value(0).toString();
+        QString listPWD = query_confirm.value(1).toString();
+        QString listName = query_confirm.value(3).toString();
+        if(info.ID == listID){
+            qDebug() << "ID 가 "<<info.ID<<"라고 있습니다.";
+
+            return;
+        }
+    }
     bool isSuccess;
     QSqlQuery query = emit requestQuery(
         QString("INSERT INTO coin.`User`(ID, password, money, name, payment, phoneNum) VALUES('%1', '%2', 10000000, '%3', %4, %5)").arg(info.ID).arg(info.PW).arg(info.name).arg(info.payment).arg(info.phoneNum),
