@@ -524,21 +524,34 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
 
     bool updated = false;
     QJsonObject resultObj; // 응답용
-
+    // QJsonObject coins = userObj["coins"].toObject();
+    //         double money = userObj["money"].toDouble();
+    //         double payment = userObj["payment"].toDouble();
+    //                 userObj["money"] = money;
+    //                 userObj["coins"] = coins;
+    //                 userObj["payment"] = payment;
+    //         userObj["tradingHis"] = tradingHis;
     bool isSuccess;
     QSqlQuery query = emit requestQuery(QString("SELECT ID, password, money, name, payment, phoneNum FROM coin.`User`"), isSuccess);
     if(!isSuccess){
         qDebug() << query.lastError();
     }
+    QString listID;
+    QString listPWD;
+    double listMoney;
+    QString listName;
+    double listPayment;
 
     while (query.next()) {
-        QString listID = query.value(0).toString();
-        QString listPWD = query.value(1).toString();
-        double listMoney = query.value(2).toDouble();
-        QString listName = query.value(3).toString();
-        double listPayment = query.value(4).toDouble();
+        listID = query.value(0).toString();
+        listPWD = query.value(1).toString();
+        listMoney = query.value(2).toDouble();
+        listName = query.value(3).toString();
+        listPayment = query.value(4).toDouble();
+
 
         if(listName == senderName){
+            QJsonObject coinsObject;
             bool isSuccess;
             QSqlQuery coin_userHasQuery = emit requestQuery(QString("SELECT CoinID, amount FROM Coin_UserHas WHERE UserID = '%1'").arg(listID), isSuccess);
             if(!isSuccess){
@@ -552,12 +565,13 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
             int afterCoinCnt;
             bool thereIsNoCoin = true;
             while(coin_userHasQuery.next()){
+                coinsObject[coin_userHasQuery.value(0).toString()] = coin_userHasQuery.value(1).toInt();
+
                 if(coin_userHasQuery.value(0).toString() == coin) {
                     coinID = coin_userHasQuery.value(0).toString();
                     currentCoinCnt = coin_userHasQuery.value(1).toInt();
                     afterCoinCnt = currentCoinCnt;
                     thereIsNoCoin = false;
-                    break;
                 }
             }
             // 신규 코인 거래 대응
@@ -597,7 +611,14 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
                     qDebug() << "매도 실패: 코인 부족";
                 }
             }
+            coinsObject[coinID] = afterCoinCnt;
 
+            resultObj["money"] = listMoney;
+            resultObj["payment"] = listPayment;
+            resultObj["coins"] = coinsObject;
+            // resp["money"] = resultObj["money"];
+            // resp["payment"] = resultObj["payment"];
+            // resp["coins"] = resultObj["coins"];
             // User's Trading INSERT
             bool isSuccess_trading;
             QSqlQuery tradingOfUserHasQuery = emit requestQuery(QString("INSERT INTO coin.tradingOfUser(traderID, `action`, amount, coinID, tradedTime, price) VALUES('%1', '%2', %3, '%4', '%5', %6);").arg(listID).arg(action).arg(amount).arg(coinID).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")).arg(price), isSuccess_trading);
@@ -626,6 +647,23 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
         }
     }
 
+    bool isSuccess_selectTrading;
+    QSqlQuery tradingsQuery = emit requestQuery(QString("SELECT traderID, `action`, amount, coinID, tradedTime, price FROM coin.tradingOfUser WHERE traderID = '%1';").arg(listID), isSuccess_selectTrading);
+    if(!isSuccess_selectTrading){
+        qDebug() << "Trading Select Query Fail!" << tradingsQuery.lastError();
+    }
+    QJsonArray tradingHis;
+    while(tradingsQuery.next()){
+        QJsonObject pertrade;
+        pertrade["action"] = tradingsQuery.value(1).toString();
+        pertrade["amount"] = tradingsQuery.value(2).toInt();
+        pertrade["coin"] = tradingsQuery.value(3).toString();
+        pertrade["datetime"] = tradingsQuery.value(4).toString();
+        pertrade["price"] = tradingsQuery.value(5).toDouble();
+
+        tradingHis.append(pertrade);
+    }
+
     // 거래 응답 전송
     QJsonObject resp;
     resp["type"] = "traderesponse";
@@ -633,12 +671,13 @@ void ClientHandler::readyRead_Trade(const QJsonObject &obj)
     resp["action"] = action;
     resp["coin"] = coin;
     resp["amount"] = amount;
-    resp["history"] = resultObj["tradingHis"];
+    resp["history"] = tradingHis;
 
     // [수정된 부분] user 객체 통째로 넘기는 대신 핵심 정보만 직접 넘김
     resp["money"] = resultObj["money"];
     resp["payment"] = resultObj["payment"];
     resp["coins"] = resultObj["coins"];
+    resp["tradingHis"] = tradingHis;
     // resp["user"] = resultObj; // 이 라인은 이제 필요 없어!
 
     QJsonDocument respDoc(resp);
